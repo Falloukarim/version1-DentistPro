@@ -1,7 +1,7 @@
 // components/UnpaidTreatmentsList.tsx
 import { FiDollarSign, FiUser, FiPhone, FiCalendar } from 'react-icons/fi';
 import Link from 'next/link';
-import { getUnpaidTreatments } from 'app/dashboard/dashboard.actions';
+import { getUnpaidTreatments } from 'app/actions/dashboard.actions';
 
 export default async function UnpaidTreatmentsList() {
   const treatments = await getUnpaidTreatments();

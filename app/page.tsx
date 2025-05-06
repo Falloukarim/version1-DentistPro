@@ -37,7 +37,7 @@ export default function HomePage() {
                 priority
               />
               <h1 className="text-3xl font-bold text-blue-800 mt-6">
-                Cabinet Dentaire SmileCare
+                Cabinet Dentaire 
               </h1>
               <p className="text-gray-600 mt-2">
                 Des soins dentaires exceptionnels pour votre confort quotidien.

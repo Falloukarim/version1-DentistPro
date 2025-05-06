@@ -15,7 +15,10 @@ function SubmitButton() {
   return (
     <Button type="submit" disabled={pending} className="gap-2">
       {pending ? (
-        <span className="inline-block h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+        <>
+          <span className="inline-block h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+          Enregistrement...
+        </>
       ) : (
         <>
           <FiSave />

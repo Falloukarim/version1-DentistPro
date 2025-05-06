@@ -3,7 +3,7 @@
 import { auth } from '@clerk/nextjs/server';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { prisma } from '../../lib/prisma';
+import prisma from '@/lib/prisma'
 import  Prisma  from '@prisma/client';
 
 // Types
@@ -67,15 +67,28 @@ interface Dentist {
     consultationId: string;
   }
 
-export async function getAvailableDentists(): Promise<Dentist[]> {
+  export async function getAvailableDentists(): Promise<Dentist[]> {
     try {
+      const { userId } = await auth();
+      const user = await prisma.user.findUnique({
+        where: { clerkUserId: userId },
+        select: { clinicId: true, role: true }
+      });
+  
+      const whereClause = user?.role === 'SUPER_ADMIN' 
+        ? { role: 'DENTIST' }
+        : { 
+            role: 'DENTIST',
+            clinicId: user?.clinicId 
+          };
+  
       return await prisma.user.findMany({
-        where: { role: 'DENTIST' },
+        where: whereClause,
         select: { id: true, firstName: true, lastName: true }
       });
     } catch (error) {
-      console.error('Erreur lors de la récupération des dentistes:', error);
-      throw new Error('Impossible de charger la liste des dentistes');
+      console.error('Erreur:', error);
+      throw new Error('Impossible de charger les dentistes');
     }
   }
   
@@ -85,15 +98,19 @@ export async function getAvailableDentists(): Promise<Dentist[]> {
     try {
       const { userId } = await auth();
       if (!userId) throw new Error('Non autorisé');
-      
-      const user = await prisma.user.findUnique({
-        where: { clerkUserId: userId }
-      });
-      
-      if (!user) throw new Error('Utilisateur non trouvé');
-      if (user.role !== 'ASSISTANT') throw new Error('Seuls les assistants peuvent créer des consultations');
   
-      // Validation des champs obligatoires
+      // Récupérer l'utilisateur avec sa clinique
+      const user = await prisma.user.findUnique({
+        where: { clerkUserId: userId },
+        include: { clinic: true }
+      });
+  
+      if (!user) throw new Error('Utilisateur non trouvé');
+      if (!user.clinicId && user.role !== 'SUPER_ADMIN') {
+        throw new Error('Aucune clinique assignée');
+      }
+  
+      // Validation des champs
       const dentistId = formData.get('dentistId') as string;
       if (!dentistId) throw new Error('Veuillez sélectionner un dentiste');
   
@@ -104,17 +121,16 @@ export async function getAvailableDentists(): Promise<Dentist[]> {
   
       const patientPhone = formData.get('patientPhone') as string;
       const phoneRegex = /^(77|76|70|78|75)[0-9]{7}$/;
-      
       if (!phoneRegex.test(patientPhone)) {
-        throw new Error('Numéro Sénégalais invalide. Doit commencer par 77, 76, 70, 78 ou 75 et avoir 9 chiffres (ex: 771234567)');
+        throw new Error('Numéro Sénégalais invalide. Doit commencer par 77, 76, 70, 78 ou 75 et avoir 9 chiffres');
       }
   
       const date = formData.get('date') as string;
       if (!date) throw new Error('Veuillez sélectionner une date');
   
-      // Création de la consultation avec paiement automatique
+      // Transaction Prisma
       const result = await prisma.$transaction(async (prisma) => {
-        // 1. Créer la consultation
+        // Créer la consultation
         const consultation = await prisma.consultation.create({
           data: {
             patientName,
@@ -124,23 +140,27 @@ export async function getAvailableDentists(): Promise<Dentist[]> {
             patientGender: formData.get('patientGender') as string || null,
             date: new Date(date),
             description: formData.get('description') as string || null,
-            isPaid: true,
+            isPaid: formData.get('isPaid') === 'true',
+            clinic: { connect: { id: user.clinicId! } },
             assistant: { connect: { id: user.id } },
             dentist: { connect: { id: dentistId } },
             createdBy: { connect: { id: user.id } }
           }
         });
   
-        // 2. Créer le paiement associé
-        await prisma.payment.create({
-          data: {
-            amount: 3000,
-            paymentMethod: 'CASH',
-            paymentDate: new Date(),
-            consultation: { connect: { id: consultation.id } },
-            createdBy: { connect: { id: user.id } }
-          }
-        });
+        // Créer le paiement si la consultation est payée
+        if (formData.get('isPaid') === 'true') {
+          await prisma.payment.create({
+            data: {
+              amount: 3000,
+              paymentMethod: 'CASH',
+              paymentDate: new Date(),
+              consultation: { connect: { id: consultation.id } },
+              createdBy: { connect: { id: user.id } },
+              clinic: { connect: { id: user.clinicId! } }
+            }
+          });
+        }
   
         return consultation;
       });
@@ -149,20 +169,7 @@ export async function getAvailableDentists(): Promise<Dentist[]> {
       return { success: true };
       
     } catch (error) {
-      console.error('Erreur lors de la création de la consultation:', error);
-      
-      if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        if (error.code === 'P2002') {
-          return { error: 'Une consultation existe déjà avec ces informations' };
-        }
-        if (error.code === 'P2021') {
-          return { error: 'La table des paiements n\'existe pas. Veuillez appliquer les migrations.' };
-        }
-        if (error.code === 'P2016') {
-          return { error: 'Erreur de relation - vérifiez les IDs de connexion' };
-        }
-      }
-      
+      console.error('Erreur:', error);
       return { 
         error: error instanceof Error ? error.message : 'Une erreur inconnue est survenue'
       };
@@ -172,35 +179,30 @@ export async function getAvailableDentists(): Promise<Dentist[]> {
   // Fonction pour obtenir les consultations selon le rôle
   export async function fetchConsultations(): Promise<Consultation[]> {
     const { userId } = await auth();
-    if (!userId) throw new Error('Non autorisé');
-  
     const user = await prisma.user.findUnique({
-      where: { clerkUserId: userId }
+      where: { clerkUserId: userId },
+      include: { clinic: true }
     });
   
-    if (!user) throw new Error('Utilisateur non trouvé');
+    const baseWhere = user?.role === 'SUPER_ADMIN' 
+      ? {}
+      : { clinicId: user?.clinicId };
   
-    const whereClause = user.role === 'ASSISTANT' 
+    const roleWhere = user?.role === 'ASSISTANT' 
       ? { assistantId: user.id }
-      : user.role === 'DENTIST' 
+      : user?.role === 'DENTIST' 
         ? { dentistId: user.id }
         : {};
   
-    const consultations = await prisma.consultation.findMany({
-      where: whereClause,
-      include: { treatments: true, dentist: true, assistant: true },
+    return await prisma.consultation.findMany({
+      where: { ...baseWhere, ...roleWhere },
+      include: { 
+        treatments: true,
+        clinic: user?.role === 'SUPER_ADMIN' ? true : false
+      },
       orderBy: { date: 'desc' }
     });
-  
-    return consultations.map(consultation => ({
-      ...consultation,
-      treatments: consultation.treatments.map(treatment => ({
-        ...treatment,
-        status: treatment.status as 'UNPAID' | 'PAID' | 'PARTIAL'
-      }))
-    }));
   }
-  
 
 export async function updateConsultation(id: string, data: Partial<ConsultationInput>) {
   const { userId } = await auth();
@@ -280,13 +282,17 @@ export async function getTreatmentById(id: string) {
     if (!userId) throw new Error('Non autorisé');
   
     const user = await prisma.user.findUnique({
-      where: { clerkUserId: userId }
+      where: { clerkUserId: userId },
+      include: { clinic: true }
     });
   
     if (!user) throw new Error('Utilisateur non trouvé');
+    if (!user.clinicId && user.role !== 'SUPER_ADMIN') {
+      throw new Error('Aucune clinique assignée');
+    }
   
     await prisma.$transaction(async (prisma) => {
-      // Créer le traitement
+      // 1. Créer le traitement
       const treatment = await prisma.treatment.create({
         data: {
           type: data.type,
@@ -294,11 +300,12 @@ export async function getTreatmentById(id: string) {
           paidAmount: data.paidAmount,
           remainingAmount: data.remainingAmount,
           status: data.status,
-          consultation: { connect: { id: consultationId } }
+          consultation: { connect: { id: consultationId } },
+          clinic: { connect: { id: user.clinicId! } }
         }
       });
   
-      // Si un paiement est fait immédiatement
+      // 2. Si un paiement est fait immédiatement
       if (data.paidAmount > 0) {
         await prisma.payment.create({
           data: {
@@ -306,7 +313,8 @@ export async function getTreatmentById(id: string) {
             paymentMethod: 'CASH',
             paymentDate: new Date(),
             treatment: { connect: { id: treatment.id } },
-            createdBy: { connect: { id: user.id } }
+            createdBy: { connect: { id: user.id } },
+            clinic: { connect: { id: user.clinicId! } }
           }
         });
       }

@@ -27,11 +27,9 @@ export default async function DashboardLayout({
     if (!syncResult.success) {
       console.error('Échec de la synchronisation:', syncResult.message);
       // Rediriger vers une page d'erreur ou forcer une déconnexion
-      redirect('/auth/sync-error');
     }
   } catch (error) {
     console.error('Erreur critique de synchronisation:', error);
-    redirect('/auth/sync-error');
   }
 
   return (

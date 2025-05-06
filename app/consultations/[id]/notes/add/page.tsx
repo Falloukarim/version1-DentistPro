@@ -1,6 +1,6 @@
 import { auth } from '@clerk/nextjs/server';
 import { redirect } from 'next/navigation';
-import { prisma } from '../../../../../lib/prisma';
+import prisma from '@/lib/prisma'
 import NoteForm from 'components/NoteForm';
 
 export default async function AddNotePage({

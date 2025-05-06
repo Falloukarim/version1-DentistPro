@@ -18,12 +18,11 @@
     "types": ["next/types", "@clerk/nextjs", "@clerk/types"],
     "paths": {
       "@/*": ["./src/*"],
-      "@/app/*": ["./src/app/*"],
       "@/lib/*": ["./src/lib/*"],
-      "@/components/*": ["./src/components/*"],
-      "@/actions/*": ["./src/actions/*"],
-      "@/types/*": ["./src/types/*"]
-    },
+  "@/components/*": ["./src/components/*"],
+  "@/actions/*": ["./src/actions/*"],
+  "@/types/*": ["./src/types/*"]
+},
     "plugins": [
       {
         "name": "next"

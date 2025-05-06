@@ -5,7 +5,6 @@ import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
 import { Appointment } from '../app/appointments/action';
 import { FiClock, FiUser, FiPhone, FiInfo } from 'react-icons/fi';
-import { Button } from '@/components/ui/button';
 
 type ValuePiece = Date | null;
 type Value = ValuePiece | [ValuePiece, ValuePiece];
@@ -22,21 +21,30 @@ export default function CalendarView({ appointments }: CalendarViewProps) {
     setDate(value);
     
     if (value instanceof Date) {
-      const selectedDate = value.toISOString().split('T')[0];
+      // Normaliser les dates pour la comparaison (ignorer l'heure et le fuseau horaire)
+      const selectedDate = new Date(value);
+      selectedDate.setHours(0, 0, 0, 0);
+      
       const filtered = appointments.filter(app => {
-        const appDate = new Date(app.date).toISOString().split('T')[0];
-        return appDate === selectedDate;
+        const appDate = new Date(app.date);
+        appDate.setHours(0, 0, 0, 0);
+        return appDate.getTime() === selectedDate.getTime();
       });
+      
       setSelectedAppointments(filtered);
     }
   };
 
   const tileContent = ({ date, view }: { date: Date; view: string }) => {
     if (view === 'month') {
-      const dateStr = date.toISOString().split('T')[0];
+      // Même normalisation pour l'affichage des points
+      const currentDate = new Date(date);
+      currentDate.setHours(0, 0, 0, 0);
+      
       const dayAppointments = appointments.filter(app => {
-        const appDate = new Date(app.date).toISOString().split('T')[0];
-        return appDate === dateStr;
+        const appDate = new Date(app.date);
+        appDate.setHours(0, 0, 0, 0);
+        return appDate.getTime() === currentDate.getTime();
       });
       
       return dayAppointments.length > 0 ? (
@@ -64,7 +72,7 @@ export default function CalendarView({ appointments }: CalendarViewProps) {
           value={date}
           locale="fr-FR"
           tileContent={tileContent}
-          className="border rounded-lg shadow-sm p-2 bg-card text-foreground"
+          className="react-calendar-custom border rounded-lg shadow-sm p-2 bg-card text-foreground"
           minDetail="month"
           next2Label={null}
           prev2Label={null}

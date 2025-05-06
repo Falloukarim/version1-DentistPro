@@ -3,8 +3,9 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { FaHome, FaUsers, FaCalendarAlt, FaMoneyBillWave, FaBox, FaTooth, FaClinicMedical, FaTimes } from "react-icons/fa";
-import { UserButton } from "@clerk/nextjs";
+import { UserButton, useUser } from "@clerk/nextjs";
 import { ThemeToggle } from "./ui/ThemeToggle";
+import { FiShield } from "react-icons/fi";
 
 interface SidebarProps {
   onClose?: () => void;
@@ -12,6 +13,7 @@ interface SidebarProps {
 
 const Sidebar = ({ onClose }: SidebarProps) => {
   const pathname = usePathname();
+  const { user, isLoaded } = useUser();
 
   const menuItems = [
     { path: "/dashboard", name: "Tableau de Bord", icon: <FaHome /> },
@@ -21,6 +23,9 @@ const Sidebar = ({ onClose }: SidebarProps) => {
     { path: "/products", name: "Produits", icon: <FaBox /> },
     { path: "/consultations/add", name: "Nouvelle Consultation", icon: <FaTooth /> }
   ];
+
+  // Vérification plus robuste du rôle
+  const isSuperAdmin = isLoaded && user?.publicMetadata?.role === 'SUPER_ADMIN';
 
   return (
     <div className="w-64 bg-card border-r border-border h-full flex flex-col z-50 shadow-lg">
@@ -69,6 +74,53 @@ const Sidebar = ({ onClose }: SidebarProps) => {
               </Link>
             </li>
           ))}
+          
+          {/* Section Admin - condition améliorée */}
+          {isSuperAdmin && (
+            <>
+              <li className="mt-6 mb-2 px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Administration
+              </li>
+              <li>
+                <Link 
+                  href="/admin/super-admin" 
+                  className={`flex items-center p-3 rounded-lg transition-all ${
+                    pathname.startsWith("/admin/super-admin")
+                      ? "bg-primary/10 text-primary font-medium border border-primary/20"
+                      : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                  }`}
+                >
+                  <span className={`mr-3 p-2 rounded-lg ${
+                    pathname.startsWith("/admin/super-admin") 
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-accent text-accent-foreground"
+                  }`}>
+                    <FiShield />
+                  </span>
+                  <span>Admin Système</span>
+                </Link>
+              </li>
+              <li>
+                <Link 
+                  href="/admin/clinics" 
+                  className={`flex items-center p-3 rounded-lg transition-all ${
+                    pathname.startsWith("/admin/clinics")
+                      ? "bg-primary/10 text-primary font-medium border border-primary/20"
+                      : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                  }`}
+                >
+                  <span className={`mr-3 p-2 rounded-lg ${
+                    pathname.startsWith("/admin/clinics") 
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-accent text-accent-foreground"
+                  }`}>
+                    <FaClinicMedical />
+                  </span>
+                  <span>Gestion Cliniques</span>
+                </Link>
+              </li>
+            </>
+          )}
         </ul>
       </nav>
 

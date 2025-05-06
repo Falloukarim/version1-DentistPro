@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { FiUser, FiCalendar, FiDollarSign, FiClock, FiChevronRight, FiPhone, FiPlusCircle, FiPackage } from "react-icons/fi";
 
 import { auth } from "@clerk/nextjs/server";
-import { getDashboardStats, getTodaysAppointments } from "./dashboard.actions";
+import { getDashboardStats, getTodaysAppointments } from "../actions/dashboard.actions";
 
 import Layout from "components/layout";
 import StatCard from "../../components/ui/StatCard";
@@ -112,91 +112,94 @@ export default async function DashboardHome() {
   
     return (
         <Layout>
-        {/* Suppression du max-w-[1800px] et modification des paddings */}
-        <div className="h-screen w-full p-0 overflow-y-auto bg-background">
-          {/* En-tête */}
-          <div className="p-4 sm:p-6">
-            <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Tableau de Bord</h1>
-            <p className="text-sm sm:text-base text-muted-foreground mt-1">
-              Bienvenue sur votre espace personnel
-            </p>
-          </div>
-  
-          {/* Cartes Statistiques */}
-          <Suspense fallback={
-            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 animate-pulse">
-              {[...Array(4)].map((_, i) => (
-                <div key={i} className="bg-card/50 p-4 rounded-xl h-28 sm:h-32 flex items-center justify-center border border-border">
-                  <div className="h-6 w-6 bg-muted rounded-full"></div>
+          {/* Conteneur principal sans marges */}
+          <div className="h-screen w-full overflow-y-auto bg-background">
+            {/* En-tête sans padding latéral */}
+            <div className="p-4 sm:p-6">
+              <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Tableau de Bord</h1>
+              <p className="text-sm sm:text-base text-muted-foreground mt-1">
+                Bienvenue sur votre espace personnel
+              </p>
+            </div>
+    
+            {/* Contenu principal sans padding latéral */}
+            <div className="px-4 sm:px-6">
+              {/* Cartes Statistiques */}
+              <Suspense fallback={
+                <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 animate-pulse">
+                  {[...Array(4)].map((_, i) => (
+                    <div key={i} className="bg-card/50 p-4 rounded-xl h-28 sm:h-32 flex items-center justify-center border border-border">
+                      <div className="h-6 w-6 bg-muted rounded-full"></div>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          }>
-            <StatsWrapper />
-          </Suspense>
-  
-          {/* Grille principale */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 sm:gap-6 p-4 sm:p-6">
-            {/* Section RDV */}
-            <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
-            <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
-                <h2 className="text-lg sm:text-xl font-semibold text-foreground">
-                  Rendez-vous aujourd'hui
-                </h2>
-                <Link 
-                  href="/appointments" 
-                  className="text-sm font-medium text-primary hover:text-primary/80 flex items-center gap-1"
-                >
-                  Voir tout <FiChevronRight className="text-sm" />
-                </Link>
-              </div>
-              <div className="p-4 sm:p-5">
-                <Suspense fallback={
-                  <div className="space-y-3">
-                    {[...Array(3)].map((_, i) => (
-                      <div key={i} className="h-16 bg-muted/50 rounded-lg animate-pulse"></div>
-                    ))}
+              }>
+                <StatsWrapper />
+              </Suspense>
+        
+              {/* Grille principale sans padding latéral */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 sm:gap-6 pb-6">
+                {/* Section RDV */}
+                <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
+                  <div className="p-4 sm:p-5 border-b border-border flex justify-between items-center">
+                    <h2 className="text-lg sm:text-xl font-semibold text-foreground">
+                      Rendez-vous aujourd'hui
+                    </h2>
+                    <Link 
+                      href="/appointments" 
+                      className="text-sm font-medium text-primary hover:text-primary/80 flex items-center gap-1"
+                    >
+                      Voir tout <FiChevronRight className="text-sm" />
+                    </Link>
                   </div>
-                }>
-                  <TodaysAppointments />
-                </Suspense>
-              </div>
-            </div>
-  
-            {/* Actions rapides */}
-            <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
-              <div className="p-4 sm:p-5 border-b border-border">
-                <h2 className="text-lg sm:text-xl font-semibold text-foreground">Actions Rapides</h2>
-              </div>
-              <div className="p-4 sm:p-5 grid grid-cols-2 gap-3 sm:gap-4">
-                <QuickAction 
-                  icon={<FiPlusCircle className="text-blue-600 dark:text-blue-400" />} 
-                  title="Nouvelle Consultation" 
-                  href="/consultations/add" 
-                  color="blue"
-                />
-                <QuickAction 
-                  icon={<FiCalendar className="text-purple-600 dark:text-purple-400" />} 
-                  title="Nouveau RDV" 
-                  href="/appointments/add" 
-                  color="purple"
-                />
-                <QuickAction 
-                  icon={<FiDollarSign className="text-green-600 dark:text-green-400" />} 
-                  title="Paiement" 
-                  href="/payments" 
-                  color="green"
-                />
-                <QuickAction 
-                  icon={<FiPackage className="text-orange-600 dark:text-orange-400" />} 
-                  title="Produits" 
-                  href="/products" 
-                  color="orange"
-                />
+                  <div className="p-4 sm:p-5">
+                    <Suspense fallback={
+                      <div className="space-y-3">
+                        {[...Array(3)].map((_, i) => (
+                          <div key={i} className="h-16 bg-muted/50 rounded-lg animate-pulse"></div>
+                        ))}
+                      </div>
+                    }>
+                      <TodaysAppointments />
+                    </Suspense>
+                  </div>
+                </div>
+        
+                {/* Actions rapides */}
+                <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
+                  <div className="p-4 sm:p-5 border-b border-border">
+                    <h2 className="text-lg sm:text-xl font-semibold text-foreground">Actions Rapides</h2>
+                  </div>
+                  <div className="p-4 sm:p-5 grid grid-cols-2 gap-3 sm:gap-4">
+                    <QuickAction 
+                      icon={<FiPlusCircle className="text-blue-600 dark:text-blue-400" />} 
+                      title="Nouvelle Consultation" 
+                      href="/consultations/add" 
+                      color="blue"
+                    />
+                    <QuickAction 
+                      icon={<FiCalendar className="text-purple-600 dark:text-purple-400" />} 
+                      title="Nouveau RDV" 
+                      href="/appointments/add" 
+                      color="purple"
+                    />
+                    <QuickAction 
+                      icon={<FiDollarSign className="text-green-600 dark:text-green-400" />} 
+                      title="Paiement" 
+                      href="/payments" 
+                      color="green"
+                    />
+                    <QuickAction 
+                      icon={<FiPackage className="text-orange-600 dark:text-orange-400" />} 
+                      title="Produits" 
+                      href="/products" 
+                      color="orange"
+                    />
+                  </div>
+                </div>
               </div>
             </div>
           </div>
-        </div>
       </Layout>
     );
 }

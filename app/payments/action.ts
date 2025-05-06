@@ -3,8 +3,7 @@
 import { auth } from '@clerk/nextjs/server';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { prisma } from '../../lib/prisma';
-
+import prisma from '@/lib/prisma'
 // Types
 interface PaymentInput {
   amount: number;
@@ -20,10 +19,14 @@ export async function addConsultationPayment(consultationId: string, amount: num
   if (!userId) throw new Error('Non autorisé');
 
   const user = await prisma.user.findUnique({
-    where: { clerkUserId: userId }
+    where: { clerkUserId: userId },
+    include: { clinic: true }
   });
 
   if (!user) throw new Error('Utilisateur non trouvé');
+  if (!user.clinicId && user.role !== 'SUPER_ADMIN') {
+    throw new Error('Aucune clinique assignée');
+  }
 
   const consultation = await prisma.consultation.findUnique({
     where: { id: consultationId }
@@ -31,52 +34,57 @@ export async function addConsultationPayment(consultationId: string, amount: num
 
   if (!consultation) throw new Error('Consultation non trouvée');
 
-  // Vérifier que le montant correspond exactement au prix de la consultation
+  // Vérification du montant
   const consultationPrice = 3000;
   if (amount !== consultationPrice) {
     throw new Error(`Le montant doit être exactement ${consultationPrice} FCFA pour une consultation`);
   }
 
-  // Vérifier que la consultation n'est pas déjà payée
   if (consultation.isPaid) {
     throw new Error('Cette consultation a déjà été payée');
   }
 
-  // Mettre à jour le statut de paiement de la consultation
-  await prisma.consultation.update({
-    where: { id: consultationId },
-    data: { 
-      isPaid: true,
-      updatedAt: new Date()
-    }
-  });
+  await prisma.$transaction(async (prisma) => {
+    // Mettre à jour la consultation
+    await prisma.consultation.update({
+      where: { id: consultationId },
+      data: { 
+        isPaid: true,
+        updatedAt: new Date()
+      }
+    });
 
-  // Créer un enregistrement de paiement
-  await prisma.payment.create({
-    data: {
-      amount,
-      paymentMethod: 'CASH',
-      paymentDate: new Date(),
-      consultationId,
-      createdById: user.id
-    }
+    // Créer le paiement
+    await prisma.payment.create({
+      data: {
+        amount,
+        paymentMethod: 'CASH',
+        paymentDate: new Date(),
+        consultationId,
+        createdById: user.id,
+        clinic: { connect: { id: user.clinicId! } }
+      }
+    });
   });
 
   revalidatePath(`/consultations/${consultationId}`);
   revalidatePath('/payments');
   redirect(`/consultations/${consultationId}`);
 }
-
 // Enregistrer un paiement pour un traitement
 export async function addTreatmentPayment(treatmentId: string, data: PaymentInput) {
   const { userId } = await auth();
   if (!userId) throw new Error('Non autorisé');
 
   const user = await prisma.user.findUnique({
-    where: { clerkUserId: userId }
+    where: { clerkUserId: userId },
+    include: { clinic: true }
   });
 
   if (!user) throw new Error('Utilisateur non trouvé');
+  if (!user.clinicId && user.role !== 'SUPER_ADMIN') {
+    throw new Error('Aucune clinique assignée');
+  }
 
   const treatment = await prisma.treatment.findUnique({
     where: { id: treatmentId },
@@ -85,39 +93,41 @@ export async function addTreatmentPayment(treatmentId: string, data: PaymentInpu
 
   if (!treatment) throw new Error('Traitement non trouvé');
 
-  // Calculer le nouveau montant payé
-  const newPaidAmount = treatment.paidAmount + data.amount;
-  const remainingAmount = treatment.amount - newPaidAmount;
+  await prisma.$transaction(async (prisma) => {
+    // Calculer les nouveaux montants
+    const newPaidAmount = treatment.paidAmount + data.amount;
+    const remainingAmount = treatment.amount - newPaidAmount;
 
-  if (newPaidAmount > treatment.amount) {
-    throw new Error('Le montant payé dépasse le montant dû');
-  }
-
-  // Déterminer le nouveau statut
-  const newStatus = remainingAmount <= 0 ? 'PAID' : 'PARTIAL';
-
-  // Mettre à jour le traitement
-  await prisma.treatment.update({
-    where: { id: treatmentId },
-    data: {
-      paidAmount: newPaidAmount,
-      remainingAmount: remainingAmount,
-      status: newStatus,
-      updatedAt: new Date()
+    if (newPaidAmount > treatment.amount) {
+      throw new Error('Le montant payé dépasse le montant dû');
     }
-  });
 
-  // Créer un enregistrement de paiement
-  await prisma.payment.create({
-    data: {
-      amount: data.amount,
-      paymentMethod: data.paymentMethod,
-      paymentDate: new Date(data.paymentDate),
-      reference: data.reference,
-      notes: data.notes,
-      treatmentId,
-      createdById: user.id
-    }
+    const newStatus = remainingAmount <= 0 ? 'PAID' : 'PARTIAL';
+
+    // Mettre à jour le traitement
+    await prisma.treatment.update({
+      where: { id: treatmentId },
+      data: {
+        paidAmount: newPaidAmount,
+        remainingAmount: remainingAmount,
+        status: newStatus,
+        updatedAt: new Date()
+      }
+    });
+
+    // Créer le paiement
+    await prisma.payment.create({
+      data: {
+        amount: data.amount,
+        paymentMethod: data.paymentMethod,
+        paymentDate: new Date(data.paymentDate),
+        reference: data.reference,
+        notes: data.notes,
+        treatmentId,
+        createdById: user.id,
+        clinic: { connect: { id: user.clinicId! } }
+      }
+    });
   });
 
   revalidatePath(`/consultations/${treatment.consultation.id}`);
@@ -128,47 +138,44 @@ export async function addTreatmentPayment(treatmentId: string, data: PaymentInpu
 // Récupérer l'historique des paiements
 export async function getPaymentHistory() {
     const { userId } = await auth();
-    if (!userId) throw new Error('Non autorisé');
-  
     const user = await prisma.user.findUnique({
-      where: { clerkUserId: userId }
+      where: { clerkUserId: userId },
+      include: { clinic: true }
     });
   
-    if (!user) throw new Error('Utilisateur non trouvé');
+    const whereClause = user?.role === 'SUPER_ADMIN'
+      ? {}
+      : {
+          OR: [
+            { createdById: user?.id },
+            { 
+              consultation: { 
+                clinicId: user?.clinicId 
+              } 
+            },
+            {
+              treatment: {
+                consultation: {
+                  clinicId: user?.clinicId
+                }
+              }
+            }
+          ]
+        };
   
-    try {
-      const payments = await prisma.payment.findMany({
-        where: { createdById: user.id },
-        include: {
-          consultation: {
-            select: {
-              id: true,
-              patientName: true,
-              patientPhone: true,
-              date: true
-            }
-          },
-          treatment: {
-            select: {
-              id: true,
-              type: true,
-              amount: true
-            }
-          },
-          createdBy: {
-            select: {
-              firstName: true,
-              lastName: true
-            }
+    return await prisma.payment.findMany({
+      where: whereClause,
+      include: {
+        consultation: {
+          select: {
+            patientName: true,
+            clinic: user?.role === 'SUPER_ADMIN' ? true : false
           }
         },
-        orderBy: { paymentDate: 'desc' }
-      });
-  
-      console.log('Payments found:', payments); // Ajoutez ce log pour le débogage
-      return payments;
-    } catch (error) {
-      console.error('Error fetching payments:', error);
-      throw error;
-    }
+        treatment: true,
+        createdBy: true
+      },
+      orderBy: { paymentDate: 'desc' }
+    });
   }
+  

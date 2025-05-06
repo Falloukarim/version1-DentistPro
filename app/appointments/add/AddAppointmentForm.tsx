@@ -13,6 +13,7 @@ export default function AddAppointmentForm() {
   const [consultations, setConsultations] = useState<Consultation[]>([]);
   const [selectedConsultation, setSelectedConsultation] = useState<Consultation | null>(null);
   const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     consultationId: '',
     date: '',
@@ -55,18 +56,38 @@ export default function AddAppointmentForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSubmitting(true);
     
     try {
-      // Créer un objet FormData et y ajouter les valeurs
       const formDataObj = new FormData();
       formDataObj.append('consultationId', formData.consultationId);
       formDataObj.append('date', formData.date);
       formDataObj.append('reason', formData.reason);
       
-      await addAppointment(formDataObj);
-      router.push('/appointments');
+      const result = await addAppointment(formDataObj);
+      
+      if (result?.success) {
+        router.push('/appointments');
+        router.refresh(); // Pour s'assurer que les données sont à jour
+      }
     } catch (error) {
-      console.error("Erreur lors de la création:", error);
+      console.error("Erreur:", error);
+      
+      // Gestion des erreurs spécifiques
+      if (error instanceof Error) {
+        switch (error.message) {
+          case "Aucune clinique assignée.":
+            alert("Vous devez être assigné à une clinique pour créer un rendez-vous");
+            break;
+          case "Consultation introuvable.":
+            alert("La consultation sélectionnée n'existe plus");
+            break;
+          default:
+            alert(error.message || "Une erreur est survenue");
+        }
+      }
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -168,8 +189,15 @@ export default function AddAppointmentForm() {
           >
             Annuler
           </Button>
-          <Button type="submit">
-            Enregistrer le rendez-vous
+          <Button type="submit" disabled={submitting}>
+            {submitting ? (
+              <span className="flex items-center gap-2">
+                <span className="inline-block h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                Enregistrement...
+              </span>
+            ) : (
+              'Enregistrer le rendez-vous'
+            )}
           </Button>
         </div>
       </form>
