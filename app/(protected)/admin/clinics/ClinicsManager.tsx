@@ -20,11 +20,19 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useAuth } from '@clerk/nextjs';
+import Link from 'next/link';
+import { Settings, UserPlus, PlusCircle, Trash2 } from 'lucide-react';
+import Image from 'next/image';
 
 export default function ClinicsManager() {
   const { getToken } = useAuth();
   const [clinics, setClinics] = useState([]);
-  const [newClinic, setNewClinic] = useState({ name: '', address: '' });
+  const [newClinic, setNewClinic] = useState({ 
+    name: '', 
+    address: '',
+    phone: '',
+    email: '' 
+  });
   const [assignData, setAssignData] = useState({ clinicId: '', userId: '' });
   const [isLoading, setIsLoading] = useState(false);
   const [newUser, setNewUser] = useState({
@@ -48,41 +56,12 @@ export default function ClinicsManager() {
     setIsLoading(true);
     try {
       const token = await getToken();
-      const response = await fetch('/api/clinics', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+      const response = await fetch('/api/admin/clinics', {
+        headers: { 'Authorization': `Bearer ${token}` }
       });
       if (!response.ok) throw await response.json();
       const data = await response.json();
       setClinics(data);
-    } catch (error) {
-      showError(error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleCreateClinic = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-    try {
-      const token = await getToken();
-      const response = await fetch('/api/clinics', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(newClinic),
-      });
-      
-      if (!response.ok) throw await response.json();
-      
-      showSuccess('Clinique créée avec succès');
-      setNewClinic({ name: '', address: '' });
-      setIsClinicDialogOpen(false);
-      fetchClinics();
     } catch (error) {
       showError(error);
     } finally {
@@ -106,7 +85,34 @@ export default function ClinicsManager() {
       setIsLoading(false);
     }
   };
-  
+
+  const handleCreateClinic = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    try {
+      const token = await getToken();
+      const response = await fetch('/api/admin/clinics', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(newClinic),
+      });
+      
+      if (!response.ok) throw await response.json();
+      
+      showSuccess('Clinique créée avec succès');
+      setNewClinic({ name: '', address: '', phone: '', email: '' });
+      setIsClinicDialogOpen(false);
+      fetchClinics();
+    } catch (error) {
+      showError(error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleAssignRole = async () => {
     if (!selectedUserId) return;
   
@@ -167,14 +173,14 @@ export default function ClinicsManager() {
   };
 
   const handleDeleteClinic = async (id: string) => {
+    if (!confirm("Êtes-vous sûr de vouloir supprimer cette clinique ?")) return;
+    
     setIsLoading(true);
     try {
       const token = await getToken();
-      const response = await fetch(`/api/clinics/${id}`, {
+      const response = await fetch(`/api/admin/clinics/${id}`, {
         method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+        headers: { 'Authorization': `Bearer ${token}` }
       });
 
       if (!response.ok) throw await response.json();
@@ -199,7 +205,7 @@ export default function ClinicsManager() {
       }
   
       const token = await getToken();
-      const response = await fetch('/api/add-dentist', {
+      const response = await fetch('/api/users', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -245,7 +251,7 @@ export default function ClinicsManager() {
     description: error.message || 'Erreur inconnue',
     variant: "destructive" 
   });
-  
+
   return (
     <div className="p-4 max-w-7xl mx-auto">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
@@ -254,9 +260,10 @@ export default function ClinicsManager() {
           <Button 
             onClick={() => setIsUserDialogOpen(true)} 
             disabled={isLoading}
-            className="w-full md:w-auto"
+            className="w-full md:w-auto gap-1"
           >
-            + Ajouter utilisateur
+            <UserPlus className="h-4 w-4" />
+            Ajouter utilisateur
           </Button>
           <Button 
             onClick={() => {
@@ -264,16 +271,18 @@ export default function ClinicsManager() {
               fetchUsers();
             }}
             disabled={isLoading}
-            className="w-full md:w-auto"
+            className="w-full md:w-auto gap-1"
           >
-            + Assigner rôle
+            <Settings className="h-4 w-4" />
+            Assigner rôle
           </Button>
           <Button 
             onClick={() => setIsClinicDialogOpen(true)} 
             disabled={isLoading}
-            className="w-full md:w-auto"
+            className="w-full md:w-auto gap-1"
           >
-            + Ajouter clinique
+            <PlusCircle className="h-4 w-4" />
+            Ajouter clinique
           </Button>
         </div>
       </div>
@@ -319,8 +328,10 @@ export default function ClinicsManager() {
                   <SelectValue placeholder="Sélectionner un rôle" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="DENTIST">Dentiste</SelectItem>
+                  <SelectItem value="SUPER_ADMIN">Super Admin</SelectItem>
                   <SelectItem value="ADMIN">Administrateur</SelectItem>
+                  <SelectItem value="DENTIST">Dentiste</SelectItem>
+                  <SelectItem value="ASSISTANT">Assistant</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -408,8 +419,10 @@ export default function ClinicsManager() {
                     <SelectValue placeholder="Sélectionner un rôle" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="DENTIST">Dentiste</SelectItem>
+                    <SelectItem value="SUPER_ADMIN">Super Admin</SelectItem>
                     <SelectItem value="ADMIN">Administrateur</SelectItem>
+                    <SelectItem value="DENTIST">Dentiste</SelectItem>
+                    <SelectItem value="ASSISTANT">Assistant</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -431,7 +444,9 @@ export default function ClinicsManager() {
           <form onSubmit={handleCreateClinic}>
             <div className="grid gap-4 py-4">
               <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-4">
-                <Label htmlFor="name" className="sm:text-right">Nom</Label>
+                <Label htmlFor="name" className="sm:text-right">
+                  Nom <span className="text-red-500">*</span>
+                </Label>
                 <Input
                   id="name"
                   value={newClinic.name}
@@ -449,28 +464,78 @@ export default function ClinicsManager() {
                   className="sm:col-span-3"
                 />
               </div>
-              <Button type="submit" disabled={isLoading} className="mt-4">
-                {isLoading ? "Création..." : "Créer"}
+              <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-4">
+                <Label htmlFor="phone" className="sm:text-right">Téléphone</Label>
+                <Input
+                  id="phone"
+                  value={newClinic.phone}
+                  onChange={(e) => setNewClinic({...newClinic, phone: e.target.value})}
+                  className="sm:col-span-3"
+                />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-4">
+                <Label htmlFor="email" className="sm:text-right">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={newClinic.email}
+                  onChange={(e) => setNewClinic({...newClinic, email: e.target.value})}
+                  className="sm:col-span-3"
+                />
+              </div>
+              <Button 
+                type="submit" 
+                disabled={isLoading} 
+                className="mt-4"
+              >
+                {isLoading ? "Création..." : "Créer la clinique"}
               </Button>
             </div>
           </form>
         </DialogContent>
       </Dialog>
-
-      {/* Liste responsive des cliniques */}
+      {/* Liste des cliniques avec bouton de personnalisation */}
       <div className="mt-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {isLoading ? (
-          <div className="col-span-full text-center">Chargement...</div>
+          <div className="col-span-full flex justify-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          </div>
         ) : clinics.length === 0 ? (
-          <div className="col-span-full text-center">Aucune clinique trouvée.</div>
+          <div className="col-span-full text-center py-8 text-muted-foreground">
+            Aucune clinique trouvée
+          </div>
         ) : (
           clinics.map((clinic) => (
-            <div key={clinic.id} className="border p-4 rounded-lg flex flex-col">
-              <div className="flex-grow">
-                <h3 className="font-medium text-lg">{clinic.name}</h3>
-                {clinic.address && <p className="text-sm text-gray-500 mt-1">{clinic.address}</p>}
+            <div key={clinic.id} className="border p-4 rounded-lg flex flex-col hover:shadow-md transition-shadow">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex-grow">
+                  <h3 className="font-medium text-lg">{clinic.name}</h3>
+                  {clinic.address && <p className="text-sm text-muted-foreground mt-1">{clinic.address}</p>}
+                </div>
+                {clinic.logoUrl && (
+                  <div className="relative h-10 w-10 rounded-md overflow-hidden border">
+                    <Image
+                      src={clinic.logoUrl}
+                      alt={`Logo ${clinic.name}`}
+                      fill
+                      className="object-cover"
+                      sizes="40px"
+                    />
+                  </div>
+                )}
               </div>
+              
               <div className="flex flex-col sm:flex-row gap-2 mt-4">
+                <Link 
+                  href={`/admin/clinics/${clinic.id}/settings`}
+                  className="flex-1"
+                >
+                  <Button variant="outline" className="w-full gap-2">
+                    <Settings className="h-4 w-4" />
+                    Personnaliser
+                  </Button>
+                </Link>
+                
                 <Dialog>
                   <DialogTrigger asChild>
                     <Button 
@@ -479,7 +544,7 @@ export default function ClinicsManager() {
                       onClick={() => setCurrentClinicId(clinic.id)}
                       className="w-full sm:w-auto"
                     >
-                      Assigner utilisateur
+                      Assigner
                     </Button>
                   </DialogTrigger>
                   <DialogContent className="max-w-[95vw] sm:max-w-md">
@@ -508,12 +573,14 @@ export default function ClinicsManager() {
                     </form>
                   </DialogContent>
                 </Dialog>
+                
                 <Button 
                   variant="destructive" 
                   onClick={() => handleDeleteClinic(clinic.id)}
                   disabled={isLoading}
-                  className="w-full sm:w-auto"
+                  className="w-full sm:w-auto gap-1"
                 >
+                  <Trash2 className="h-4 w-4" />
                   Supprimer
                 </Button>
               </div>

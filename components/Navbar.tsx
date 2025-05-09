@@ -1,21 +1,13 @@
 import React from "react";
-import { FaTooth, FaBars, FaClinicMedical } from "react-icons/fa";
-import { FiShield } from "react-icons/fi";
+import { FaTooth, FaBars } from "react-icons/fa";
 import { ThemeToggle } from "./ui/ThemeToggle";
-import { useUser } from "@clerk/nextjs";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-
+import AdminLinks from "./AdminLinks";
 interface NavbarProps {
   onLogout: () => void;
   onMenuToggle?: () => void;
 }
 
 const Navbar = ({ onLogout, onMenuToggle }: NavbarProps) => {
-  const { user } = useUser();
-  const pathname = usePathname();
-  const isSuperAdmin = user?.publicMetadata?.role === 'SUPER_ADMIN';
-
   return (
     <div className="bg-background border-b border-border px-4 md:px-6 py-3 md:py-4 flex justify-between items-center shadow-sm">
       <div className="flex items-center gap-4">
@@ -29,6 +21,7 @@ const Navbar = ({ onLogout, onMenuToggle }: NavbarProps) => {
           </button>
         )}
         <div className="flex items-center gap-3">
+        <AdminLinks />
           <FaTooth className="text-primary text-xl" />
           <h1 className="text-lg md:text-xl font-semibold text-foreground">
             <span className="font-light">Cabinet</span> Dentaire
@@ -37,34 +30,6 @@ const Navbar = ({ onLogout, onMenuToggle }: NavbarProps) => {
       </div>
       
       <div className="flex items-center gap-4">
-        {/* Menu Admin pour Super Admin */}
-        {isSuperAdmin && (
-          <div className="hidden md:flex items-center gap-2 border-r border-border pr-4 mr-2">
-            <Link 
-              href="/admin/super-admin" 
-              className={`flex items-center gap-2 px-3 py-1 rounded-md text-sm ${
-                pathname.startsWith("/admin/super-admin")
-                  ? "bg-primary/10 text-primary"
-                  : "text-muted-foreground hover:bg-accent"
-              }`}
-            >
-              <FiShield className="text-base" />
-              <span>Admin</span>
-            </Link>
-            <Link 
-              href="/admin/clinics" 
-              className={`flex items-center gap-2 px-3 py-1 rounded-md text-sm ${
-                pathname.startsWith("/admin/clinics")
-                  ? "bg-primary/10 text-primary"
-                  : "text-muted-foreground hover:bg-accent"
-              }`}
-            >
-              <FaClinicMedical className="text-base" />
-              <span>Cliniques</span>
-            </Link>
-          </div>
-        )}
-
         <ThemeToggle />
         <button 
           onClick={onLogout}

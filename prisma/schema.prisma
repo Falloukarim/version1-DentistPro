@@ -9,10 +9,14 @@ datasource db {
 
 model Clinic {
   id          String         @id @default(uuid())
-  name        String   @unique // <-- Ceci est essentiel
+  name        String         @unique
   address     String?
   phone       String?
   email       String?
+  logoUrl     String?        // Nouveau - URL du logo Cloudinary
+  primaryColor String?       @default("#3b82f6") // Nouveau - Couleur principale
+  secondaryColor String?     @default("#8b5cf6") // Nouveau - Couleur secondaire
+  customDashboardConfig Json? // Nouveau - Configuration personnalisée
   isActive    Boolean        @default(true)
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt

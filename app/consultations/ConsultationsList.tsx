@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@clerk/nextjs';
@@ -17,11 +17,11 @@ import {
   FiPhone,
   FiCalendar,
   FiMapPin,
-  FiDollarSign
+  FiDollarSign,
+  FiSearch
 } from 'react-icons/fi';
 import { deleteAllConsultations, updateConsultation } from './action';
 import type { Consultation } from './action';
-import LoadingSpinner from 'components/ui/LoadingSpinner';
 
 interface ConsultationsListProps {
   consultations: Consultation[];
@@ -32,6 +32,7 @@ export default function ConsultationsList({ consultations: initialConsultations 
   const [loading, setLoading] = useState(false);
   const { user: clerkUser, isLoaded } = useUser();
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
   const [editForm, setEditForm] = useState({
     patientName: '',
     patientPhone: '',
@@ -40,6 +41,14 @@ export default function ConsultationsList({ consultations: initialConsultations 
     description: '',
     isPaid: false
   });
+
+  // Filtrer les consultations basée sur le terme de recherche
+  const filteredConsultations = useMemo(() => {
+    if (!searchTerm) return initialConsultations;
+    return initialConsultations.filter(consultation => 
+      consultation.patientName.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [initialConsultations, searchTerm]);
 
   const getTotalCost = (consultation: Consultation) => {
     const consultationCost = consultation.isPaid ? 3000 : 0;
@@ -160,6 +169,35 @@ export default function ConsultationsList({ consultations: initialConsultations 
           </Link>
         </div>
       </div>
+
+      {/* Barre de recherche */}
+      <div className="mb-6">
+        <div className="relative max-w-md">
+          <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+            <FiSearch className="text-gray-400 dark:text-gray-500" />
+          </div>
+          <input
+            type="text"
+            placeholder="Rechercher par nom de patient..."
+            className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+          {searchTerm && (
+            <button
+              onClick={() => setSearchTerm('')}
+              className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+            >
+              <FiX />
+            </button>
+          )}
+        </div>
+        {searchTerm && (
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            {filteredConsultations.length} résultat(s) trouvé(s) pour "{searchTerm}"
+          </p>
+        )}
+      </div>
       
       <div className="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 overflow-hidden">
         <div className="overflow-x-auto">
@@ -176,7 +214,7 @@ export default function ConsultationsList({ consultations: initialConsultations 
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-              {initialConsultations.map(consultation => {
+              {filteredConsultations.map(consultation => {
                 const isEditing = editingId === consultation.id;
                 const totalCost = getTotalCost(consultation);
                 const paidAmount = getPaidAmount(consultation);
@@ -341,9 +379,11 @@ export default function ConsultationsList({ consultations: initialConsultations 
         </div>
       </div>
 
-      {initialConsultations.length === 0 && (
+      {filteredConsultations.length === 0 && (
         <div className="mt-8 text-center text-gray-500 dark:text-gray-400">
-          Aucune consultation enregistrée
+          {searchTerm ? 
+            `Aucune consultation trouvée pour "${searchTerm}"` : 
+            'Aucune consultation enregistrée'}
         </div>
       )}
     </div>

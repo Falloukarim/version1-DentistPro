@@ -3,12 +3,20 @@
 import { auth } from "@clerk/nextjs/server";
 import prisma from '@/lib/prisma';
 
-export async function createClinic(name: string, address?: string) {
+export async function createClinic(
+  name: string, 
+  address?: string,
+  phone?: string,
+  email?: string,
+  logoUrl?: string,
+  primaryColor?: string,
+  secondaryColor?: string
+) {
   const { userId } = await auth();
   if (!userId) throw new Error("Non autorisé");
 
   const user = await prisma.user.findUnique({
-    where: { clerkUserId: userId as string }, // Conversion explicite en string
+    where: { clerkUserId: userId },
     select: { role: true }
   });
 
@@ -19,8 +27,23 @@ export async function createClinic(name: string, address?: string) {
   return prisma.clinic.create({
     data: {
       name,
-      address: address ?? undefined, // Convertit null en undefined
+      address: address ?? undefined,
+      phone: phone ?? undefined,
+      email: email ?? undefined,
+      logoUrl: logoUrl ?? undefined,
+      primaryColor: primaryColor ?? undefined,
+      secondaryColor: secondaryColor ?? undefined,
       isActive: true
+    },
+    select: {
+      id: true,
+      name: true,
+      address: true,
+      phone: true,
+      email: true,
+      logoUrl: true,
+      primaryColor: true,
+      secondaryColor: true
     }
   });
 }
@@ -30,23 +53,30 @@ export async function getClinics() {
   if (!userId) throw new Error("Non autorisé");
 
   const user = await prisma.user.findUnique({
-    where: { clerkUserId: userId as string }, // Conversion explicite
+    where: { clerkUserId: userId },
     select: { role: true, clinicId: true }
   });
 
   if (!user) throw new Error("Utilisateur non trouvé");
 
-  if (user.role === 'SUPER_ADMIN') {
-    return prisma.clinic.findMany();
-  }
+  const where = user.role === 'SUPER_ADMIN' 
+    ? { isActive: true }
+    : { id: user.clinicId, isActive: true };
 
-  if (user.clinicId) {
-    return prisma.clinic.findMany({
-      where: { id: user.clinicId }
-    });
-  }
-
-  return [];
+  return prisma.clinic.findMany({
+    where,
+    select: {
+      id: true,
+      name: true,
+      address: true,
+      phone: true,
+      email: true,
+      logoUrl: true,
+      primaryColor: true,
+      secondaryColor: true,
+      isActive: true
+    }
+  });
 }
 
 export async function assignUserToClinic(userId: string, clinicId: string) {
@@ -54,8 +84,8 @@ export async function assignUserToClinic(userId: string, clinicId: string) {
   if (!currentUserId) throw new Error("Non autorisé");
 
   const currentUser = await prisma.user.findUnique({
-    where: { clerkUserId: currentUserId as string }, // Conversion explicite
-    select: { role: true, clinicId: true }
+    where: { clerkUserId: currentUserId },
+    select: { role: true }
   });
 
   if (!currentUser || (currentUser.role !== 'SUPER_ADMIN' && currentUser.role !== 'ADMIN')) {
@@ -64,7 +94,15 @@ export async function assignUserToClinic(userId: string, clinicId: string) {
 
   return prisma.user.update({
     where: { id: userId },
-    data: { clinicId }
+    data: { clinicId },
+    select: {
+      id: true,
+      firstName: true,
+      lastName: true,
+      email: true,
+      role: true,
+      clinicId: true
+    }
   });
 }
 
@@ -73,7 +111,7 @@ export async function getClinicUsers(clinicId?: string) {
   if (!userId) throw new Error("Non autorisé");
 
   const currentUser = await prisma.user.findUnique({
-    where: { clerkUserId: userId as string }, // Conversion explicite
+    where: { clerkUserId: userId },
     select: { role: true, clinicId: true }
   });
 
@@ -94,17 +132,18 @@ export async function getClinicUsers(clinicId?: string) {
       firstName: true,
       lastName: true,
       email: true,
-      role: true
+      role: true,
+      clinicId: true
     }
   });
 }
-// clinic.actions.ts
+
 export async function deleteClinic(clinicId: string) {
   const { userId } = await auth();
   if (!userId) throw new Error("Non autorisé");
 
   const user = await prisma.user.findUnique({
-    where: { clerkUserId: userId as string },
+    where: { clerkUserId: userId },
     select: { role: true }
   });
 
@@ -112,7 +151,37 @@ export async function deleteClinic(clinicId: string) {
     throw new Error("Seul un SUPER_ADMIN peut supprimer une clinique");
   }
 
-  return prisma.clinic.delete({
-    where: { id: clinicId }
+  // Désactiver plutôt que supprimer pour conserver l'historique
+  return prisma.clinic.update({
+    where: { id: clinicId },
+    data: { isActive: false },
+    select: { id: true, name: true }
   });
+}
+
+export async function getClinicForUser(clerkUserId: string) {
+  const userWithClinic = await prisma.user.findUnique({
+    where: { clerkUserId },
+    include: {
+      clinic: {
+        select: {
+          id: true,
+          name: true,
+          address: true,
+          phone: true,
+          email: true,
+          logoUrl: true,
+          primaryColor: true,
+          secondaryColor: true,
+          isActive: true
+        }
+      }
+    }
+  });
+
+  if (!userWithClinic) {
+    throw new Error('User not found');
+  }
+
+  return userWithClinic.clinic;
 }

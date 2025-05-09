@@ -7,6 +7,9 @@ const nextConfig = {
   // }
   
   // Par ceci :
+  images: {
+    domains: ['res.cloudinary.com'],
+  },
   serverExternalPackages: ["nom-du-package"]
 }
 
