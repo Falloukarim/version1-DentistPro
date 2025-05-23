@@ -61,6 +61,7 @@ model User {
 
   // Relations financières
   paymentsCreated             Payment[]         @relation("CreatedPayments")
+  products Product[]  // Relation inverse avec Product
 
   @@index([clerkUserId, clinicId])
   @@map("users")
@@ -139,7 +140,10 @@ model Product {
   price       Float     @default(0)
   stock       Int       @default(0)
   used        Int       @default(0)
+  disponible  Int      @default(0)  // Nouveau champ calculé
   updatedAt   DateTime  @updatedAt
+  userId    String?
+  user      User?   @relation(fields: [userId], references: [id])
 
   // Relations
   clinic     Clinic    @relation(fields: [clinicId], references: [id])

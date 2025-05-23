@@ -2,7 +2,6 @@
 
 import prisma from '@/lib/prisma';
 import { auth } from '@clerk/nextjs/server';
-import { Role } from '@prisma/client';
 
 export async function getTodaysAppointments() {
     const { userId } = await auth();
@@ -54,6 +53,29 @@ export async function getTodaysAppointments() {
     });
 }
 
+export async function getLowStockProducts(threshold = 3) {
+  const { userId } = await auth();
+  if (!userId) throw new Error('Non autorisé');
+
+  const user = await prisma.user.findUnique({
+    where: { clerkUserId: userId }
+  });
+
+  if (!user) throw new Error('Utilisateur non trouvé');
+
+  return await prisma.product.findMany({
+    where: {
+      userId: user.id,
+      stock: { lt: threshold }
+    },
+    select: {
+      id: true,
+      name: true,
+      stock: true
+    },
+    orderBy: { stock: 'asc' }
+  });
+}
 export async function getUnpaidTreatments() {
     const { userId } = await auth();
     if (!userId) throw new Error("Non autorisé");
@@ -116,72 +138,103 @@ export async function getDashboardStats() {
   if (!user) throw new Error("Utilisateur non trouvé");
 
   try {
-    // 1. Patients uniques - Version corrigée
-    const uniquePatientsQuery = user.role === 'SUPER_ADMIN'
-      ? prisma.$queryRaw<[{ count: bigint }]>`
-          SELECT COUNT(DISTINCT "patientPhone") as count
-          FROM "consultations"
-        `
-      : prisma.$queryRaw<[{ count: bigint }]>`
-          SELECT COUNT(DISTINCT "patientPhone") as count
-          FROM "consultations"
-          WHERE ("assistantId" = ${user.id} OR "dentistId" = ${user.id})
-          AND "clinicId" = ${user.clinicId}
-        `;
+    // Exécution en parallèle de toutes les requêtes
+    const [
+      uniquePatients,
+      todaysAppointments,
+      totalRevenue,
+      unpaidTreatments,
+      lowStockProducts // Renommé de allProducts à lowStockProducts pour plus de clarté
+    ] = await Promise.all([
+      // 1. Patients uniques
+      user.role === 'SUPER_ADMIN'
+        ? prisma.$queryRaw<[{ count: bigint }]>`
+            SELECT COUNT(DISTINCT "patientPhone") as count
+            FROM "consultations"`
+        : prisma.$queryRaw<[{ count: bigint }]>`
+            SELECT COUNT(DISTINCT "patientPhone") as count
+            FROM "consultations"
+            WHERE ("assistantId" = ${user.id} OR "dentistId" = ${user.id})
+            AND "clinicId" = ${user.clinicId}`,
 
-    const uniquePatients = await uniquePatientsQuery;
-
-    // 2. Rendez-vous du jour (déjà correct)
-    const todaysAppointments = await prisma.appointment.count({
-      where: {
-        ...(user.role !== 'SUPER_ADMIN' && { clinicId: user.clinicId }),
-        ...(user.role === 'DENTIST' ? { dentistId: user.id } : 
-            user.role === 'ASSISTANT' ? { createdById: user.id } : {}),
-        date: {
-          gte: new Date(new Date().setHours(0, 0, 0, 0)),
-          lte: new Date(new Date().setHours(23, 59, 59, 999))
-        }
-      }
-    });
-
-    // 3. Revenu total - Version corrigée
-    const totalRevenueQuery = user.role === 'SUPER_ADMIN'
-      ? prisma.$queryRaw<[{ sum: number }]>`
-          SELECT COALESCE(SUM(t."paidAmount"), 0) as sum
-          FROM "treatments" t
-          JOIN "consultations" c ON t."consultationId" = c.id
-        `
-      : prisma.$queryRaw<[{ sum: number }]>`
-          SELECT COALESCE(SUM(t."paidAmount"), 0) as sum
-          FROM "treatments" t
-          JOIN "consultations" c ON t."consultationId" = c.id
-          WHERE (c."assistantId" = ${user.id} OR c."dentistId" = ${user.id})
-          AND c."clinicId" = ${user.clinicId}
-        `;
-
-    const totalRevenue = await totalRevenueQuery;
-
-    // 4. Traitements non payés (déjà correct)
-    const unpaidTreatments = await prisma.treatment.count({
-      where: {
-        consultation: {
+      // 2. Rendez-vous du jour
+      prisma.appointment.count({
+        where: {
           ...(user.role !== 'SUPER_ADMIN' && { clinicId: user.clinicId }),
-          ...(user.role !== 'SUPER_ADMIN' && {
-            OR: [
-              { assistantId: user.id },
-              { dentistId: user.id }
-            ]
-          })
+          ...(user.role === 'DENTIST' ? { dentistId: user.id } : 
+              user.role === 'ASSISTANT' ? { createdById: user.id } : {}),
+          date: {
+            gte: new Date(new Date().setHours(0, 0, 0, 0)),
+            lte: new Date(new Date().setHours(23, 59, 59, 999))
+          }
+        }
+      }),
+
+      // 3. Revenu total
+      user.role === 'SUPER_ADMIN'
+        ? prisma.$queryRaw<[{ sum: number }]>`
+            SELECT COALESCE(SUM(t."paidAmount"), 0) as sum
+            FROM "treatments" t
+            JOIN "consultations" c ON t."consultationId" = c.id`
+        : prisma.$queryRaw<[{ sum: number }]>`
+            SELECT COALESCE(SUM(t."paidAmount"), 0) as sum
+            FROM "treatments" t
+            JOIN "consultations" c ON t."consultationId" = c.id
+            WHERE (c."assistantId" = ${user.id} OR c."dentistId" = ${user.id})
+            AND c."clinicId" = ${user.clinicId}`,
+
+      // 4. Traitements non payés
+      prisma.treatment.count({
+        where: {
+          consultation: {
+            ...(user.role !== 'SUPER_ADMIN' && { clinicId: user.clinicId }),
+            ...(user.role !== 'SUPER_ADMIN' && {
+              OR: [
+                { assistantId: user.id },
+                { dentistId: user.id }
+              ]
+            })
+          },
+          status: { in: ['UNPAID', 'PARTIAL'] }
+        }
+      }),
+
+      // 5. Produits en faible stock
+      prisma.product.findMany({
+        where: {
+          ...(user.role !== 'SUPER_ADMIN' && { clinicId: user.clinicId }),
+          stock: { gt: 0 } // Uniquement les produits avec stock > 0
         },
-        status: { in: ['UNPAID', 'PARTIAL'] }
-      }
-    });
-    
+        select: {
+          id: true,
+          name: true,
+          stock: true,
+          used: true,
+          price: true
+        },
+        orderBy: { stock: 'asc' }
+      })
+    ]);
+
+    // Calcul du disponible et filtrage des produits critiques
+    const productsWithDisponible = lowStockProducts.map(p => ({
+      ...p,
+      disponible: p.stock - p.used
+    }));
+
+    const criticalProducts = productsWithDisponible.filter(p => p.disponible < 3);
+
     return {
       uniqueClients: Number(uniquePatients[0]?.count) || 0,
       todaysAppointments,
       totalRevenue: totalRevenue[0]?.sum || 0,
-      unpaidTreatments
+      unpaidTreatments,
+      lowStockProducts: criticalProducts,
+      lowStockCount: criticalProducts.length,
+      lowStockValue: criticalProducts.reduce(
+        (sum, product) => sum + (product.price * product.disponible), 0
+      ),
+      hasLowStockItems: criticalProducts.length > 0
     };
   } catch (error) {
     console.error("Erreur dans getDashboardStats:", error);

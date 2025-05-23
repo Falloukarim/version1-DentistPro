@@ -35,3 +35,10 @@ export function badRequestResponse(message?: string) {
     { status: 400 }
   );
 }
+
+export function notFoundResponse() {
+  return NextResponse.json(
+    { error: "Ressource non trouvée" },
+    { status: 404 }
+  );
+}

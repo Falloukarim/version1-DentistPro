@@ -12,6 +12,7 @@ export interface Product {
   price: number;
   stock: number;
   used: number;
+  disponible : number;
   clinicId: string;
   updatedAt: Date;
   clinic?: {
@@ -54,19 +55,19 @@ export async function fetchProducts(): Promise<Product[]> {
 }
 
 // Ajouter un produit
+// Dans action.ts
 export async function addProduct(data: {
   name: string;
   price: number;
   stock: number;
   description?: string;
-}) {
+}): Promise<Product> {
   const user = await getCurrentUser();
 
   if (!user.clinicId && user.role !== 'SUPER_ADMIN') {
     throw new Error('Produits réservés aux cliniques');
   }
 
-  // Vérifier l'unicité du nom dans la clinique
   const existingProduct = await prisma.product.findFirst({
     where: {
       name: data.name,
@@ -78,56 +79,75 @@ export async function addProduct(data: {
     throw new Error('Un produit avec ce nom existe déjà dans votre clinique');
   }
 
-  await prisma.product.create({
+  const newProduct = await prisma.product.create({
     data: {
       ...data,
       clinicId: user.clinicId!,
-      used: 0
+      used: 0,
+      disponible: data.stock // Ajout de cette ligne pour initialiser disponible
+    },
+    include: {
+      clinic: user.role === 'SUPER_ADMIN' ? { select: { name: true } } : false
     }
   });
 
   revalidatePath('/products');
-  redirect('/products');
+  return newProduct;
 }
 
 // Utiliser un produit (décrémente le stock)
-export async function useProduct(productId: string) {
+export async function useProduct(productId: string): Promise<Product> {
   const user = await getCurrentUser();
 
-  const product = await prisma.product.findUnique({
-    where: { 
-      id: productId,
-      clinicId: user.role !== 'SUPER_ADMIN' ? user.clinicId : undefined
-    }
+  return await prisma.$transaction(async (prisma) => {
+    // 1. Vérification du stock disponible
+    const product = await prisma.product.findUnique({
+      where: { 
+        id: productId,
+        clinicId: user.clinicId 
+      }
+    });
+    if (!product) throw new Error('Produit non trouvé');
+    if (product.stock - product.used <= 0) throw new Error('Stock épuisé');
+
+    // 2. Mise à jour atomique
+    const updatedProduct = await prisma.product.update({
+      where: { id: productId },
+      data: { 
+        used: { increment: 1 },
+        disponible: { decrement: 1 }, // Maintient la cohérence
+        updatedAt: new Date() 
+      },
+      include: { clinic: true }
+    });
+
+    return updatedProduct;
   });
-
-  if (!product) throw new Error('Produit non trouvé');
-  if (product.stock <= product.used) throw new Error('Stock épuisé');
-
-  await prisma.product.update({
-    where: { 
-      id: productId,
-      clinicId: user.role !== 'SUPER_ADMIN' ? user.clinicId : undefined
-    },
-    data: { used: { increment: 1 } }
-  });
-
-  revalidatePath('/products');
 }
 
 // Réapprovisionner un produit
-export async function restockProduct(productId: string, quantity: number = 10) {
+export async function restockProduct(
+  productId: string, 
+  quantity: number = 10
+): Promise<Product> {
   const user = await getCurrentUser();
 
-  await prisma.product.update({
+  const updatedProduct = await prisma.product.update({
     where: { 
       id: productId,
       clinicId: user.role !== 'SUPER_ADMIN' ? user.clinicId : undefined
     },
-    data: { stock: { increment: quantity } }
+    data: { 
+      stock: { increment: quantity },
+      updatedAt: new Date()
+    },
+    include: {
+      clinic: user.role === 'SUPER_ADMIN' ? { select: { name: true } } : false
+    }
   });
 
   revalidatePath('/products');
+  return updatedProduct; // Retourne le produit réapprovisionné
 }
 
 // Mettre à jour un produit

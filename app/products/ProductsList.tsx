@@ -8,38 +8,36 @@ import type { Product } from './action';
 import ErrorAlert from '../../components/ErrorAlert';
 
 interface ProductsListProps {
-    initialProducts: Product[] | null; // Modifié pour accepter null
-  }
+  initialProducts: Product[] | null;
+}
+
+export default function ProductsList({ initialProducts }: ProductsListProps) {
+  const [products, setProducts] = useState<Product[]>(initialProducts || []);
+  const [newProduct, setNewProduct] = useState({
+    name: '',
+    price: '',
+    stock: '',
+    description: ''
+  });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Calcul des statistiques
+  const totalValue = products.reduce((sum, product) => sum + (product.price * product.stock), 0);
   
-  export default function ProductsList({ initialProducts }: ProductsListProps) {
-    const [products, setProducts] = useState<Product[]>(initialProducts || []);
-    const [newProduct, setNewProduct] = useState({
-      name: '',
-      price: '',
-      stock: '',
-      description: ''
-    });
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-  
-    // Calcul des statistiques (avec vérification)
-    const totalValue = products?.reduce((sum, product) => sum + (product.price * product.stock), 0) || 0;
-    
-    const mostUsed = products?.reduce((max, product) => 
-      product.used > max.count ? { name: product.name, count: product.used } : max, 
-      { name: '', count: 0 }
-    ) || { name: '', count: 0 };
-  
-    // Préparation des données pour le graphique (avec vérification)
-    const chartData = products?.map(product => ({
-      name: product.name,
-      utilisé: product.used,
-      restant: product.stock - product.used
-    })) || [];
-  
-    const clearError = () => {
-      setError(null);
-    };
+  const mostUsed = products.reduce((max, product) => 
+    product.used > max.count ? { name: product.name, count: product.used } : max, 
+    { name: '', count: 0 }
+  );
+
+  // Préparation des données pour le graphique
+  const chartData = products.map(product => ({
+    name: product.name,
+    utilisé: product.used,
+    restant: product.stock - product.used
+  }));
+
+  const clearError = () => setError(null);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -52,22 +50,47 @@ interface ProductsListProps {
   const handleAddProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    
+    const tempId = `temp-${Date.now()}`;
+    const initialStock = Number(newProduct.stock);
+    
+    const tempProduct: Product = {
+      id: tempId,
+      name: newProduct.name,
+      description: newProduct.description || null,
+      price: Number(newProduct.price),
+      stock: initialStock,
+      used: 0,
+      disponible: initialStock, // Initialisation correcte
+      clinicId: 'temp-clinic-id',
+      updatedAt: new Date(),
+      clinic: { name: 'Chargement...' }
+    };
+    
+    setProducts(prev => [tempProduct, ...prev]);
+    setNewProduct({ name: '', price: '', stock: '', description: '' });
+  
     try {
-      await addProduct({
-        name: newProduct.name,
-        price: Number(newProduct.price),
-        stock: Number(newProduct.stock),
-        description: newProduct.description
+      const createdProduct = await addProduct({
+        name: tempProduct.name,
+        price: tempProduct.price,
+        stock: tempProduct.stock,
+        description: tempProduct.description || undefined
       });
       
-      // Rafraîchir les données
-      const updatedProducts = await fetchProducts();
-      setProducts(updatedProducts);
+      // Vérification que le produit créé a bien disponible = stock
+      if (createdProduct.disponible !== createdProduct.stock) {
+        createdProduct.disponible = createdProduct.stock;
+      }
       
-      setNewProduct({ name: '', price: '', stock: '', description: '' });
+      setProducts(prev => [
+        createdProduct,
+        ...prev.filter(p => p.id !== tempId)
+      ]);
+      
     } catch (err) {
-      const error = err as Error;
-      setError(error.message || "Erreur lors de l'ajout du produit");
+      setProducts(prev => prev.filter(p => p.id !== tempId));
+      setError(err instanceof Error ? err.message : "Erreur lors de l'ajout du produit");
     } finally {
       setLoading(false);
     }
@@ -76,12 +99,27 @@ interface ProductsListProps {
   const handleUseProduct = async (productId: string) => {
     setLoading(true);
     try {
-      await useProduct(productId);
-      const updatedProducts = await fetchProducts();
-      setProducts(updatedProducts);
+      // Mise à jour optimiste
+      setProducts(prev => prev.map(p => 
+        p.id === productId ? { 
+          ...p, 
+          used: p.used + 1,
+          disponible: p.disponible - 1
+        } : p
+      ));
+
+      const updatedProduct = await useProduct(productId);
+      setProducts(prev => prev.map(p => p.id === productId ? updatedProduct : p));
     } catch (err) {
-      const error = err as Error;
-      setError(error.message || "Erreur lors de l'utilisation du produit");
+      // Annulation optimiste
+      setProducts(prev => prev.map(p => 
+        p.id === productId ? { 
+          ...p, 
+          used: p.used - 1,
+          disponible: p.disponible + 1
+        } : p
+      ));
+      setError(err instanceof Error ? err.message : "Erreur inconnue");
     } finally {
       setLoading(false);
     }
@@ -90,12 +128,27 @@ interface ProductsListProps {
   const handleRestockProduct = async (productId: string) => {
     setLoading(true);
     try {
-      await restockProduct(productId);
-      const updatedProducts = await fetchProducts();
-      setProducts(updatedProducts);
+      // Mise à jour optimiste
+      setProducts(prev => prev.map(p => 
+        p.id === productId ? { 
+          ...p, 
+          stock: p.stock + 10,
+          disponible: p.disponible + 10
+        } : p
+      ));
+
+      const updatedProduct = await restockProduct(productId);
+      setProducts(prev => prev.map(p => p.id === productId ? updatedProduct : p));
     } catch (err) {
-      const error = err as Error;
-      setError(error.message || "Erreur lors du réapprovisionnement");
+      // Annulation optimiste
+      setProducts(prev => prev.map(p => 
+        p.id === productId ? { 
+          ...p, 
+          stock: p.stock - 10,
+          disponible: p.disponible - 10
+        } : p
+      ));
+      setError(err instanceof Error ? err.message : "Erreur inconnue");
     } finally {
       setLoading(false);
     }
@@ -120,7 +173,6 @@ interface ProductsListProps {
         </h1>
       </div>
 
-      {/* Cartes de statistiques */}
       <div className="grid grid-cols-1 bg-background md:grid-cols-3 gap-6 mb-8">
         <div className="bg-background p-6 rounded-xl shadow-sm border border-gray-100">
           <div className="flex items-center gap-3 mb-2">
@@ -142,7 +194,6 @@ interface ProductsListProps {
         </div>
       </div>
 
-      {/* Formulaire d'ajout */}
       <div className="bg-background p-6 rounded-xl shadow-sm border border-gray-100 mb-8">
         <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
           <FiPlus className="text-blue-500" />
@@ -197,7 +248,6 @@ interface ProductsListProps {
         </form>
       </div>
 
-      {/* Graphique */}
       <div className="bg-background p-6 rounded-xl shadow-sm border border-gray-100 mb-8 h-96">
         <h2 className="text-xl font-semibold mb-4">Utilisation des produits</h2>
         <ResponsiveContainer width="100%" height="90%">
@@ -230,69 +280,81 @@ interface ProductsListProps {
         </ResponsiveContainer>
       </div>
 
-      {/* Liste des produits */}
       <div className="bg-background rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-  <div className="p-6 border-b border-gray-100">
-    <h2 className="text-xl font-semibold">Liste des produits</h2>
-  </div>
+        <div className="p-6 border-b border-gray-100">
+          <h2 className="text-xl font-semibold">Liste des produits</h2>
+        </div>
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Produit</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Prix unitaire</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stock</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stock total</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Utilisé</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Disponible</th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {products.map(product => (
-                <tr key={product.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900">
-                    {product.name}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-gray-500">
-                    {product.price.toLocaleString()} FCFA
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-gray-500">
-                    {product.stock}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-gray-500">
-                    {product.used}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      (product.stock - product.used) < 5 
-                        ? 'bg-red-100 text-red-800' 
-                        : 'bg-green-100 text-green-800'
-                    }`}>
-                      {product.stock - product.used}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <div className="flex justify-end gap-2">
-                      <button 
-                        onClick={() => handleUseProduct(product.id)}
-                        className="flex items-center gap-1 bg-blue-50 hover:bg-blue-100 text-blue-600 px-3 py-1 rounded-md text-xs transition-colors"
-                        disabled={loading}
-                      >
-                        <FiShoppingCart size={14} />
-                        Utiliser
-                      </button>
-                      <button 
-                        onClick={() => handleRestockProduct(product.id)}
-                        className="flex items-center gap-1 bg-green-50 hover:bg-green-100 text-green-600 px-3 py-1 rounded-md text-xs transition-colors"
-                        disabled={loading}
-                      >
-                        <FiRefreshCw size={14} />
-                        +10
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+              {products.map(product => {
+                const isTempProduct = product.id.startsWith('temp-');
+                
+                return (
+                  <tr key={product.id} className={`hover:bg-gray-50 transition-colors ${isTempProduct ? 'opacity-70' : ''}`}>
+                    {isTempProduct ? (
+                      <td colSpan={6} className="px-6 py-4 text-center">
+                        <div className="inline-flex items-center justify-center gap-2 text-sm text-gray-500">
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-400"></div>
+                          Ajout du produit en cours...
+                        </div>
+                      </td>
+                    ) : (
+                      <>
+                        <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900">
+                          {product.name}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-gray-500">
+                          {product.price.toLocaleString()} FCFA
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-gray-500">
+                          {product.stock}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-gray-500">
+                          {product.used}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            product.disponible < 3 ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'
+                          }`}>
+                            {product.disponible}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                          <div className="flex justify-end gap-2">
+                            <button 
+                              onClick={() => handleUseProduct(product.id)}
+                              className="flex items-center gap-1 bg-blue-50 hover:bg-blue-100 text-blue-600 px-3 py-1 rounded-md text-xs transition-colors"
+                              disabled={loading || isTempProduct}
+                            >
+                              <FiShoppingCart size={14} />
+                              Utiliser
+                            </button>
+                            <button 
+                              onClick={() => handleRestockProduct(product.id)}
+                              className="flex items-center gap-1 bg-green-50 hover:bg-green-100 text-green-600 px-3 py-1 rounded-md text-xs transition-colors"
+                              disabled={loading || isTempProduct}
+                            >
+                              <FiRefreshCw size={14} />
+                              +10
+                            </button>
+                          </div>
+                        </td>
+                      </>
+                    )}
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

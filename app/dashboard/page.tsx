@@ -5,7 +5,7 @@ import { FiUser, FiCalendar, FiDollarSign, FiClock, FiChevronRight, FiPhone, FiP
 
 import { auth } from "@clerk/nextjs/server";
 import { getDashboardStats, getTodaysAppointments } from "../actions/dashboard.actions";
-
+import LowStockAlert from 'components/LowStockAlert';
 import Layout from "components/layout";
 import StatCard from "../../components/ui/StatCard";
 import QuickAction from "../../components/ui/QuickAction";
@@ -15,36 +15,42 @@ async function StatsWrapper() {
   const stats = await getDashboardStats();
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
-      <StatCard 
-        title="Patients" 
-        value={stats.uniqueClients} 
-        icon={<FiUser className="text-lg" />} 
-        color="blue" 
-        href="/consultations"
-      />
-      <StatCard 
-        title="Rendez-vous" 
-        value={stats.todaysAppointments} 
-        icon={<FiCalendar className="text-lg" />} 
-        color="purple" 
-        href="/appointments"
-      />
-      <StatCard 
-        title="Revenus" 
-        value={`${stats.totalRevenue.toLocaleString()} FCFA`} 
-        icon={<FiDollarSign className="text-lg" />} 
-        color="green" 
-        href="/payments"
-      />
-      <StatCard 
-        title="Impayés" 
-        value={stats.unpaidTreatments} 
-        icon={<FiClock className="text-lg" />} 
-        color="red" 
-        href="/unpaid-treatments"
-      />
-    </div>
+    <>
+      {stats.hasLowStockItems && (
+        <LowStockAlert products={stats.lowStockProducts} />
+      )}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
+        <StatCard 
+          title="Patients" 
+          value={stats.uniqueClients} 
+          icon={<FiUser className="text-lg" />} 
+          color="blue" 
+          href="/consultations"
+        />
+        <StatCard 
+          title="Rendez-vous" 
+          value={stats.todaysAppointments} 
+          icon={<FiCalendar className="text-lg" />} 
+          color="purple" 
+          href="/appointments"
+        />
+        <StatCard 
+          title="Revenus" 
+          value={`${stats.totalRevenue.toLocaleString()} FCFA`} 
+          icon={<FiDollarSign className="text-lg" />} 
+          color="green" 
+          href="/payments"
+        />
+        <StatCard 
+          title="Impayés" 
+          value={stats.unpaidTreatments} 
+          icon={<FiClock className="text-lg" />} 
+          color="red" 
+          href="/unpaid-treatments"
+        />
+       
+      </div>
+    </>
   );
 }
 
@@ -110,11 +116,11 @@ export default async function DashboardHome() {
       redirect('/sign-in');
     }
   
+    const stats = await getDashboardStats();
+  
     return (
         <Layout>
-          {/* Conteneur principal sans marges */}
           <div className="h-screen w-full overflow-y-auto bg-background">
-            {/* En-tête sans padding latéral */}
             <div className="p-4 sm:p-6">
               <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Tableau de Bord</h1>
               <p className="text-sm sm:text-base text-muted-foreground mt-1">
@@ -122,9 +128,7 @@ export default async function DashboardHome() {
               </p>
             </div>
     
-            {/* Contenu principal sans padding latéral */}
             <div className="px-4 sm:px-6">
-              {/* Cartes Statistiques */}
               <Suspense fallback={
                 <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 animate-pulse">
                   {[...Array(4)].map((_, i) => (
@@ -137,9 +141,7 @@ export default async function DashboardHome() {
                 <StatsWrapper />
               </Suspense>
         
-              {/* Grille principale sans padding latéral */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 sm:gap-6 pb-6">
-                {/* Section RDV */}
                 <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
                   <div className="p-4 sm:p-5 border-b border-border flex justify-between items-center">
                     <h2 className="text-lg sm:text-xl font-semibold text-foreground">
@@ -165,7 +167,6 @@ export default async function DashboardHome() {
                   </div>
                 </div>
         
-                {/* Actions rapides */}
                 <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
                   <div className="p-4 sm:p-5 border-b border-border">
                     <h2 className="text-lg sm:text-xl font-semibold text-foreground">Actions Rapides</h2>
@@ -194,6 +195,7 @@ export default async function DashboardHome() {
                       title="Produits" 
                       href="/products" 
                       color="orange"
+                      alert={stats.hasLowStockItems}
                     />
                   </div>
                 </div>
