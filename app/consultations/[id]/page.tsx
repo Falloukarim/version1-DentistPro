@@ -4,19 +4,24 @@ import { getConsultationById, getConsultationNotes } from '../action';
 import NoteEditor from 'components/NoteEditor';
 import Layout from 'components/layout';
 
-export default async function ConsultationDetails({ params }: { params: { id: string } }) {
+export default async function ConsultationDetails({ 
+  params 
+}: { 
+  params: { id: string }
+}) {
   const consultation = await getConsultationById(params.id);
   const notes = await getConsultationNotes(params.id);
 
+  // Trouver le traitement de consultation (s'il existe)
+  const consultationTreatment = consultation.treatments?.find(t => t.type === "Consultation");
+  
   // Calcul des montants
-  const consultationCost = 3000; // Montant fixe pour la consultation
-  const treatmentsCost = consultation.treatments.reduce((total, treatment) => total + treatment.amount, 0);
-  const totalCost = consultationCost + treatmentsCost;
+  const treatmentsCost = (consultation.treatments ?? []).reduce((total, treatment) => total + treatment.amount, 0);
+  const totalCost = treatmentsCost; // On utilise uniquement les traitements
   
   // Calcul des paiements
-  const consultationPaid = consultation.isPaid ? 3000 : 0;
-  const treatmentsPaid = consultation.treatments.reduce((total, treatment) => total + treatment.paidAmount, 0);
-  const totalPaid = consultationPaid + treatmentsPaid;
+  const treatmentsPaid = (consultation.treatments ?? []).reduce((total, treatment) => total + treatment.paidAmount, 0);
+  const totalPaid = treatmentsPaid;
   const remainingAmount = totalCost - totalPaid;
   
   // Statuts
@@ -85,42 +90,66 @@ export default async function ConsultationDetails({ params }: { params: { id: st
 
             {/* Payment Status Card */}
             <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-4 sm:p-5 shadow-sm hover:shadow-md transition-shadow">
-              <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4 text-gray-800 dark:text-white flex items-center">
-                <FiDollarSign className="mr-2 text-green-500 dark:text-green-400" />
-                Statut de paiement
-              </h2>
-              <div className="space-y-3 sm:space-y-4">
-                <div className="space-y-2">
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-600 dark:text-gray-300">Total:</span>
-                    <span className="font-semibold dark:text-white">{totalCost.toLocaleString()} FCFA</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-600 dark:text-gray-300">Payé:</span>
-                    <span className="font-semibold text-green-600 dark:text-green-400">{totalPaid.toLocaleString()} FCFA</span>
-                  </div>
-                  <div className="flex justify-between items-center pt-2 border-t border-gray-100 dark:border-gray-800">
-                    <span className="text-gray-600 dark:text-gray-300 font-medium">Reste:</span>
-                    <span className={`font-bold ${
-                      remainingAmount > 0 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'
-                    }`}>
-                      {remainingAmount.toLocaleString()} FCFA
-                    </span>
-                  </div>
+          <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4 text-gray-800 dark:text-white flex items-center">
+            <FiDollarSign className="mr-2 text-green-500 dark:text-green-400" />
+            Statut de paiement
+          </h2>
+          <div className="space-y-3 sm:space-y-4">
+            {consultationTreatment && (
+              <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg mb-3">
+                <div className="flex justify-between">
+                  <span className="text-blue-800 dark:text-blue-200">Consultation:</span>
+                  <span className="font-medium dark:text-white">
+                    {consultationTreatment.amount.toLocaleString()} FCFA
+                  </span>
                 </div>
-                <div className="flex items-center justify-between pt-3 border-t border-gray-100 dark:border-gray-800">
-                  <span className="font-medium dark:text-white">Statut global:</span>
-                  <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                    globalStatus === 'PAID' ? 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300' :
-                    globalStatus === 'PARTIAL' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300' : 
-                    'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300'
+                <div className="flex justify-between mt-1">
+                  <span className="text-sm text-blue-700 dark:text-blue-300">Statut:</span>
+                  <span className={`text-sm px-2 py-0.5 rounded-full ${
+                    consultationTreatment.status === 'PAID' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' :
+                    consultationTreatment.status === 'PARTIAL' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300' : 
+                    'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300'
                   }`}>
-                    {globalStatus === 'PAID' ? 'Payé' : 
-                     globalStatus === 'PARTIAL' ? 'Partiel' : 'Non payé'}
+                    {consultationTreatment.status === 'PAID' ? 'Payé' : 
+                     consultationTreatment.status === 'PARTIAL' ? 'Partiel' : 'Non payé'}
                   </span>
                 </div>
               </div>
+            )}
+
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="text-gray-600 dark:text-gray-300">Total:</span>
+                <span className="font-semibold dark:text-white">{totalCost.toLocaleString()} FCFA</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-gray-600 dark:text-gray-300">Payé:</span>
+                <span className="font-semibold text-green-600 dark:text-green-400">{totalPaid.toLocaleString()} FCFA</span>
+              </div>
+              <div className="flex justify-between items-center pt-2 border-t border-gray-100 dark:border-gray-800">
+                <span className="text-gray-600 dark:text-gray-300 font-medium">Reste:</span>
+                <span className={`font-bold ${
+                  remainingAmount > 0 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'
+                }`}>
+                  {remainingAmount.toLocaleString()} FCFA
+                </span>
+              </div>
             </div>
+
+            <div className="flex items-center justify-between pt-3 border-t border-gray-100 dark:border-gray-800">
+              <span className="font-medium dark:text-white">Statut global:</span>
+              <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                globalStatus === 'PAID' ? 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300' :
+                globalStatus === 'PARTIAL' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300' : 
+                'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300'
+              }`}>
+                {globalStatus === 'PAID' ? 'Payé' : 
+                 globalStatus === 'PARTIAL' ? 'Partiel' : 'Non payé'}
+              </span>
+            </div>
+          </div>
+        </div>
+
           </div>
 
           {/* Right Column - Main Content */}
@@ -143,16 +172,16 @@ export default async function ConsultationDetails({ params }: { params: { id: st
                 </span>
               </div>
 
-              {consultation.treatments.length > 0 ? (
-                <div className="space-y-4">
-                  {consultation.treatments.map(treatment => (
-                    <div key={treatment.id} className="border border-gray-100 dark:border-gray-800 rounded-lg p-3 sm:p-4 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
-                      <div className="flex justify-between items-start">
-                        <div className="flex-1">
-                          <h3 className="font-medium dark:text-white text-sm sm:text-base">{treatment.type}</h3>
-                          {treatment.description && (
-                            <p className="text-gray-500 dark:text-gray-400 text-xs sm:text-sm mt-1">{treatment.description}</p>
-                          )}
+              {(consultation.treatments ?? []).length > 0 ? (
+  <div className="space-y-4">
+    {(consultation.treatments ?? []).map(treatment => (
+      <div key={treatment.id} className="border border-gray-100 dark:border-gray-800 rounded-lg p-3 sm:p-4 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+        <div className="flex justify-between items-start">
+          <div className="flex-1">
+            <h3 className="font-medium dark:text-white text-sm sm:text-base">{treatment.type}</h3>
+            {treatment.description && (
+              <p className="text-gray-500 dark:text-gray-400 text-xs sm:text-sm mt-1">{treatment.description}</p>
+            )}
                           <div className="flex items-center mt-2">
                             <span className={`px-2 py-0.5 rounded-full text-xs ${
                               treatment.status === 'PAID' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' :

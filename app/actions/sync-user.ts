@@ -1,64 +1,79 @@
 "use server";
 
-import { auth, currentUser } from "@clerk/nextjs/server";
-import prisma from '@/lib/prisma'
-import { Role } from "@prisma/client";
+import type { Role, User, Clinic } from "@prisma/client";
+import prisma from "@/lib/prisma";
 
-export async function syncUserAction() {
+interface ClerkUser {
+  emailAddresses: { emailAddress: string }[];
+  firstName: string | null;
+  lastName: string | null;
+}
+
+// Type pour l'utilisateur avec sa clinique
+type UserWithClinic = User & {
+  clinic: Clinic | null;
+};
+
+export async function syncUserAction(
+  userId: string, 
+  clerkUser: ClerkUser | null
+): Promise<{
+  success: boolean;
+  user?: UserWithClinic;
+  message: string;
+}> {
   try {
-    const { userId } = await auth();
-    if (!userId) return { success: false, message: "Utilisateur non authentifié" };
+    if (!userId || !clerkUser) {
+      return { success: false, message: "Utilisateur non authentifié ou Clerk introuvable" };
+    }
 
-    const clerkUser = await currentUser();
-    if (!clerkUser) return { success: false, message: "Utilisateur Clerk introuvable" };
-
-    const email = clerkUser.emailAddresses[0]?.emailAddress;
+    const email = clerkUser.emailAddresses?.[0]?.emailAddress;
     if (!email) return { success: false, message: "Email non trouvé" };
 
     const isSuperAdmin = email === 'falliloukarim98@gmail.com' || email.endsWith('focusprojet7@gmail.com');
     const role: Role = isSuperAdmin ? "SUPER_ADMIN" : "ASSISTANT";
 
-    // Vérifier si l'utilisateur existe déjà
     const existingUser = await prisma.user.findUnique({
       where: { clerkUserId: userId },
       include: { clinic: true }
     });
 
     if (existingUser) {
-      return { 
-        success: true, 
+      return {
+        success: true,
         message: "Utilisateur déjà synchronisé",
-        user: existingUser
+        user: existingUser as UserWithClinic
       };
     }
 
-    // Cas où l'email existe mais pas le clerkUserId
-    const userWithSameEmail = await prisma.user.findUnique({ where: { email } });
+    const userWithSameEmail = await prisma.user.findUnique({ 
+      where: { email },
+      include: { clinic: true }
+    });
+
     if (userWithSameEmail) {
       const updatedUser = await prisma.user.update({
         where: { email },
-        data: { 
+        data: {
           clerkUserId: userId,
           firstName: clerkUser.firstName || userWithSameEmail.firstName,
           lastName: clerkUser.lastName || userWithSameEmail.lastName
         },
+        include: { clinic: true }
       });
-      return { 
-        success: true, 
+      return {
+        success: true,
         message: "Utilisateur synchronisé via email",
-        user: updatedUser
+        user: updatedUser as UserWithClinic
       };
     }
 
-    // Pour les non-SUPER_ADMIN, trouver ou créer une clinique
-    let clinicId: string | undefined;
+    // Création de la clinique si nécessaire
+    let clinicId: string | null = null;
     if (!isSuperAdmin) {
-      // Solution 1: Trouver une clinique existante
       const existingClinic = await prisma.clinic.findFirst({ 
-        where: { name: "Clinique Principale" },
-        select: { id: true }
+        where: { name: "Clinique Principale" }
       });
-      
       clinicId = existingClinic?.id || (await prisma.clinic.create({
         data: {
           name: "Clinique Principale",
@@ -69,33 +84,30 @@ export async function syncUserAction() {
       })).id;
     }
 
-    // Création du nouvel utilisateur
-    const userData = {
-      clerkUserId: userId,
-      email,
-      firstName: clerkUser.firstName || "",
-      lastName: clerkUser.lastName || "",
-      role,
-      isActive: true,
-      ...(clinicId && { clinicId }) // N'inclut clinicId que si défini
-    };
-
     const newUser = await prisma.user.create({
-      data: userData,
+      data: {
+        clerkUserId: userId,
+        email,
+        firstName: clerkUser.firstName || "",
+        lastName: clerkUser.lastName || "",
+        role,
+        isActive: true,
+        clinicId
+      },
       include: { clinic: true }
     });
 
-    return { 
-      success: true, 
+    return {
+      success: true,
       message: "Nouvel utilisateur créé",
-      user: newUser
+      user: newUser as UserWithClinic
     };
 
   } catch (error) {
-    console.error("Erreur de synchronisation:", error);
+    console.error("Erreur syncUser:", error);
     return { 
       success: false, 
-      message: "Erreur technique lors de la synchronisation"
+      message: error instanceof Error ? error.message : "Erreur technique lors de la synchronisation" 
     };
   }
 }

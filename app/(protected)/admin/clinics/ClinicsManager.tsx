@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { toast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import {
   Dialog,
   DialogContent,
@@ -23,15 +23,33 @@ import { useAuth } from '@clerk/nextjs';
 import Link from 'next/link';
 import { Settings, UserPlus, PlusCircle, Trash2 } from 'lucide-react';
 import Image from 'next/image';
+import { FiArrowLeft } from 'react-icons/fi';
+
+interface Clinic {
+  id: string;
+  name: string;
+  address?: string;
+  phone?: string;
+  email?: string;
+  logoUrl?: string;
+}
+
+interface User {
+  clerkUserId: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  role: string;
+}
 
 export default function ClinicsManager() {
   const { getToken } = useAuth();
-  const [clinics, setClinics] = useState([]);
-  const [newClinic, setNewClinic] = useState({ 
-    name: '', 
+  const [clinics, setClinics] = useState<Clinic[]>([]);
+  const [newClinic, setNewClinic] = useState({
+    name: '',
     address: '',
     phone: '',
-    email: '' 
+    email: ''
   });
   const [assignData, setAssignData] = useState({ clinicId: '', userId: '' });
   const [isLoading, setIsLoading] = useState(false);
@@ -47,44 +65,60 @@ export default function ClinicsManager() {
   const [currentClinicId, setCurrentClinicId] = useState('');
   const [selectedUserId, setSelectedUserId] = useState('');
   const [selectedRole, setSelectedRole] = useState('DENTIST');
-  const [users, setUsers] = useState([]);
+  const [users, setUsers] = useState<User[]>([]);
   const [isRoleAssignmentDialogOpen, setIsRoleAssignmentDialogOpen] = useState(false);
 
-  useEffect(() => { fetchClinics(); }, []);
+  const showError = useCallback((error: unknown) => {
+    const errorMessage = error instanceof Error 
+      ? error.message 
+      : typeof error === 'object' && error !== null && 'message' in error
+        ? String((error as { message?: string }).message)
+        : 'Erreur inconnue';
+    
+    toast.error(errorMessage);
+  }, []);
 
-  const fetchClinics = async () => {
+  const showSuccess = useCallback((message: string) => {
+    toast.success(message);
+  }, []);
+
+  const fetchClinics = useCallback(async () => {
     setIsLoading(true);
     try {
       const token = await getToken();
       const response = await fetch('/api/admin/clinics', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      if (!response.ok) throw await response.json();
-      const data = await response.json();
+      if (!response.ok) throw new Error('Échec du chargement des cliniques');
+      const data: Clinic[] = await response.json();
       setClinics(data);
     } catch (error) {
       showError(error);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [getToken, showError]);
 
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     setIsLoading(true);
     try {
       const token = await getToken();
       const response = await fetch('/api/users', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      if (!response.ok) throw await response.json();
-      const data = await response.json();
+      if (!response.ok) throw new Error('Échec du chargement des utilisateurs');
+      const data: User[] = await response.json();
       setUsers(data);
     } catch (error) {
       showError(error);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [getToken, showError]);
+
+  useEffect(() => { 
+    fetchClinics();
+  }, [fetchClinics]);
 
   const handleCreateClinic = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -200,7 +234,7 @@ export default function ClinicsManager() {
     
     try {
       if (!newUser.firstName || !newUser.email || !newUser.clerkUserId || !newUser.role) {
-        showError({ message: "Tous les champs obligatoires doivent être remplis" });
+        showError("Tous les champs obligatoires doivent être remplis");
         return;
       }
   
@@ -241,19 +275,12 @@ export default function ClinicsManager() {
     }
   };
 
-  const showSuccess = (message: string) => toast({
-    title: "Succès",
-    description: message,
-  });
-
-  const showError = (error: any) => toast({ 
-    title: "Erreur", 
-    description: error.message || 'Erreur inconnue',
-    variant: "destructive" 
-  });
-
   return (
     <div className="p-4 max-w-7xl mx-auto">
+      <Link href="/dashboard" className="text-muted-foreground hover:text-primary">
+        <FiArrowLeft size={20} />
+      </Link>
+      
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
         <h1 className="text-2xl font-bold">Gestion des Cliniques</h1>
         <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
@@ -413,7 +440,7 @@ export default function ClinicsManager() {
                   value={newUser.role}
                   onValueChange={(value) => setNewUser({...newUser, role: value})}
                   required
-                  className="sm:col-span-3"
+                  
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Sélectionner un rôle" />
@@ -494,7 +521,8 @@ export default function ClinicsManager() {
           </form>
         </DialogContent>
       </Dialog>
-      {/* Liste des cliniques avec bouton de personnalisation */}
+
+      {/* Liste des cliniques */}
       <div className="mt-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {isLoading ? (
           <div className="col-span-full flex justify-center py-8">

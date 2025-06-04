@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react';
 import { Select, SelectItem } from '@/components/ui/select';
 
 export function ClinicSelector() {
-  const [clinics, setClinics] = useState([]);
+  const [clinics, setClinics] = useState<{ id: string; name: string }[]>([]);
   const [selectedClinic, setSelectedClinic] = useState('');
   const router = useRouter();
 
@@ -14,12 +14,15 @@ export function ClinicSelector() {
     async function loadClinics() {
       const data = await getClinics();
       setClinics(data);
+
+      // Définir uniquement si rien n'est sélectionné
       if (data.length > 0 && !selectedClinic) {
         setSelectedClinic(data[0].id);
       }
     }
+
     loadClinics();
-  }, []);
+  }, [selectedClinic]); // ← maintenant safe, car conditionnel dans useEffect
 
   const handleChange = (value: string) => {
     setSelectedClinic(value);

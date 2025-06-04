@@ -20,10 +20,16 @@ export default async function AddNotePage({
 
   if (!user) redirect('/sign-in');
 
+  // Vérifier le rôle autorisé avant de rendre la page
+  const allowedRoles = ['ADMIN', 'DENTIST', 'ASSISTANT'];
+  if (!allowedRoles.includes(user.role)) {
+    redirect('/unauthorized'); // Ou la page que tu veux pour accès refusé
+  }
+
   // Get consultation details for the header
   const consultation = await prisma.consultation.findUnique({
     where: { id: params.id },
-    select: { patientName: true, date: true }
+    select: { patientName: true, date: true },
   });
 
   return (
@@ -67,7 +73,7 @@ export default async function AddNotePage({
           </h2>
           <NoteForm 
             consultationId={params.id} 
-            userRole={user.role}
+            userRole={user.role as 'ADMIN' | 'DENTIST' | 'ASSISTANT'}
             userName={`${user.firstName} ${user.lastName}`}
           />
         </div>

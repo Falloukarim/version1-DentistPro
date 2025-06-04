@@ -4,6 +4,7 @@ import { auth } from '@clerk/nextjs/server';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import prisma from '@/lib/prisma'
+
 // Types
 interface PaymentInput {
   amount: number;
@@ -16,8 +17,11 @@ interface PaymentInput {
 // Enregistrer un paiement pour une consultation
 export async function addConsultationPayment(consultationId: string, amount: number) {
   const { userId } = await auth();
-  if (!userId) throw new Error('Non autorisé');
-
+  
+  // Vérification obligatoire
+  if (!userId) {
+    throw new Error('Non autorisé - Utilisateur non authentifié');
+  }
   const user = await prisma.user.findUnique({
     where: { clerkUserId: userId },
     include: { clinic: true }
@@ -44,7 +48,7 @@ export async function addConsultationPayment(consultationId: string, amount: num
     throw new Error('Cette consultation a déjà été payée');
   }
 
-  await prisma.$transaction(async (prisma) => {
+  await prisma.$transaction(async () => {
     // Mettre à jour la consultation
     await prisma.consultation.update({
       where: { id: consultationId },
@@ -53,16 +57,22 @@ export async function addConsultationPayment(consultationId: string, amount: num
         updatedAt: new Date()
       }
     });
-
-    // Créer le paiement
+  
+    // Créer le paiement - Version corrigée
     await prisma.payment.create({
       data: {
         amount,
         paymentMethod: 'CASH',
         paymentDate: new Date(),
-        consultationId,
-        createdById: user.id,
-        clinic: { connect: { id: user.clinicId! } }
+        consultation: {
+          connect: { id: consultationId }
+        },
+        createdBy: {
+          connect: { id: user.id }
+        },
+        clinic: {
+          connect: { id: user.clinicId! }
+        }
       }
     });
   });
@@ -74,8 +84,9 @@ export async function addConsultationPayment(consultationId: string, amount: num
 // Enregistrer un paiement pour un traitement
 export async function addTreatmentPayment(treatmentId: string, data: PaymentInput) {
   const { userId } = await auth();
-  if (!userId) throw new Error('Non autorisé');
-
+  if (!userId) {
+    throw new Error('Non autorisé - Utilisateur non authentifié');
+  }
   const user = await prisma.user.findUnique({
     where: { clerkUserId: userId },
     include: { clinic: true }
@@ -93,7 +104,7 @@ export async function addTreatmentPayment(treatmentId: string, data: PaymentInpu
 
   if (!treatment) throw new Error('Traitement non trouvé');
 
-  await prisma.$transaction(async (prisma) => {
+  await prisma.$transaction(async () => {
     // Calculer les nouveaux montants
     const newPaidAmount = treatment.paidAmount + data.amount;
     const remainingAmount = treatment.amount - newPaidAmount;
@@ -123,8 +134,12 @@ export async function addTreatmentPayment(treatmentId: string, data: PaymentInpu
         paymentDate: new Date(data.paymentDate),
         reference: data.reference,
         notes: data.notes,
-        treatmentId,
-        createdById: user.id,
+        treatment: {
+          connect: { id: treatmentId }
+        },
+        createdBy: {
+          connect: { id: user.id }
+        },
         clinic: { connect: { id: user.clinicId! } }
       }
     });
@@ -136,46 +151,58 @@ export async function addTreatmentPayment(treatmentId: string, data: PaymentInpu
 }
 
 // Récupérer l'historique des paiements
+// Modifiez votre fonction comme suit
 export async function getPaymentHistory() {
-    const { userId } = await auth();
-    const user = await prisma.user.findUnique({
-      where: { clerkUserId: userId },
-      include: { clinic: true }
-    });
+  const { userId } = await auth();
   
-    const whereClause = user?.role === 'SUPER_ADMIN'
-      ? {}
-      : {
-          OR: [
-            { createdById: user?.id },
-            { 
-              consultation: { 
-                clinicId: user?.clinicId 
-              } 
-            },
-            {
-              treatment: {
-                consultation: {
-                  clinicId: user?.clinicId
-                }
-              }
-            }
-          ]
-        };
-  
-    return await prisma.payment.findMany({
-      where: whereClause,
-      include: {
-        consultation: {
-          select: {
-            patientName: true,
-            clinic: user?.role === 'SUPER_ADMIN' ? true : false
-          }
-        },
-        treatment: true,
-        createdBy: true
-      },
-      orderBy: { paymentDate: 'desc' }
-    });
+  if (!userId) {
+    throw new Error('Utilisateur non authentifié');
   }
-  
+
+  const user = await prisma.user.findUnique({
+    where: { clerkUserId: userId },
+    include: { clinic: true }
+  });
+
+  if (!user) {
+    throw new Error('Utilisateur non trouvé');
+  }
+
+  // Construction de la clause where sans types spécifiques
+  const baseCondition = user.role === 'SUPER_ADMIN' 
+    ? {} 
+    : { createdById: user.id };
+
+  const clinicCondition = user.clinicId
+    ? {
+        OR: [
+          { consultation: { clinicId: user.clinicId } },
+          { treatment: { consultation: { clinicId: user.clinicId } } }
+        ]
+      }
+    : {};
+
+  const whereClause = user.role === 'SUPER_ADMIN'
+    ? {}
+    : {
+        OR: [
+          baseCondition,
+          ...(user.clinicId ? [clinicCondition] : [])
+        ]
+      };
+
+      return await prisma.payment.findMany({
+        where: whereClause,
+        include: {
+          consultation: {
+            include: {  // Changé de select à include pour avoir tous les champs
+              clinic: true
+            }
+          },
+          treatment: true,
+          createdBy: true,
+          clinic: true
+        },
+        orderBy: { paymentDate: 'desc' }
+      });
+}

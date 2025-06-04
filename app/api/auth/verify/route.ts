@@ -1,14 +1,11 @@
-// app/api/auth/verify/route.ts
 import { NextResponse } from 'next/server';
 import { auth, currentUser } from '@clerk/nextjs/server';
 import prisma from '@/lib/prisma';
 import { Role } from '@prisma/client';
 
-export async function GET(req: Request) {
+export async function GET() {
   try {
-    const { userId } = await auth();
-    console.log('🔍 UserID from Clerk:', userId);
-
+    const { userId } = await auth(); // Ne pas utiliser "await" ici
     if (!userId) {
       return NextResponse.json(
         { error: 'Unauthorized', redirectUrl: '/sign-in' },
@@ -24,53 +21,57 @@ export async function GET(req: Request) {
       );
     }
 
-    const email = clerkUser.emailAddresses[0]?.emailAddress || 'no-email@example.com';
-    console.log('📧 Email detected:', email);
+    const email = clerkUser.emailAddresses?.[0]?.emailAddress;
+    if (!email) {
+      return NextResponse.json(
+        { error: "Email introuvable", redirectUrl: "/error" },
+        { status: 400 }
+      );
+    }
 
-    // Determine role based on email
-    const isSuperAdmin = email === 'falliloukarim98@gmail.com' || email.endsWith('focusprojet7@gmail.com');
+    const isSuperAdmin =
+      email === 'falliloukarim98@gmail.com' ||
+      email === 'focusprojet7@gmail.com';
     const role: Role = isSuperAdmin ? 'SUPER_ADMIN' : 'ASSISTANT';
-    console.log('🎭 Role determined:', role);
 
-    // Check for email conflicts
     const conflictingUser = await prisma.user.findFirst({
       where: {
         email,
         NOT: {
-          clerkUserId: userId
-        }
-      }
+          clerkUserId: userId,
+        },
+      },
     });
 
     if (conflictingUser) {
-      console.error('⚠️ Conflict: Another user already has this email.');
       return NextResponse.json(
         { error: 'Email conflict', redirectUrl: '/error' },
         { status: 409 }
       );
     }
 
-    // For non-SUPER_ADMIN users, find or create clinic
     let clinicId: string | null = null;
     if (!isSuperAdmin) {
       const existingClinic = await prisma.clinic.findFirst({
-        where: { name: "Clinique Principale" },
-        select: { id: true }
+        where: { name: 'Clinique Principale' },
+        select: { id: true },
       });
 
-      clinicId = existingClinic?.id || (
-        await prisma.clinic.create({
+      if (existingClinic) {
+        clinicId = existingClinic.id;
+      } else {
+        const newClinic = await prisma.clinic.create({
           data: {
-            name: "Clinique Principale",
-            address: "Adresse par défaut",
-            isActive: true
+            name: 'Clinique Principale',
+            address: 'Adresse par défaut',
+            isActive: true,
           },
-          select: { id: true }
-        })
-      ).id;
+          select: { id: true },
+        });
+        clinicId = newClinic.id;
+      }
     }
 
-    // Sync user with proper typing
     const user = await prisma.user.upsert({
       where: { clerkUserId: userId },
       create: {
@@ -80,24 +81,17 @@ export async function GET(req: Request) {
         lastName: clerkUser.lastName || 'User',
         isActive: true,
         role,
-        ...(!isSuperAdmin && { clinicId }) // Only assign clinicId if not SUPER_ADMIN
+        ...(clinicId && { clinicId }),
       },
       update: {
         email,
         firstName: clerkUser.firstName || 'Unknown',
         lastName: clerkUser.lastName || 'User',
-        role // Update role if needed
+        role,
       },
-      include: {  // Changed from select to include to get relations
-        clinic: true
-      }
-    });
-
-    console.log('✅ User synchronized:', {
-      id: user.id,
-      role: user.role,
-      isActive: user.isActive,
-      clinicId: user.clinicId
+      include: {
+        clinic: true,
+      },
     });
 
     if (!user.isActive) {
@@ -107,12 +101,11 @@ export async function GET(req: Request) {
       );
     }
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       status: 'authorized',
       role: user.role,
-      clinicId: user.clinicId  // Using clinicId directly from user
+      clinicId: user.clinicId,
     });
-
   } catch (error) {
     console.error('🔥 Verification error:', error);
     return NextResponse.json(

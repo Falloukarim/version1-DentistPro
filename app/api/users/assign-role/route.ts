@@ -1,4 +1,3 @@
-// app/api/users/assign-role/route.ts
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import prisma from '@/lib/prisma';
@@ -6,28 +5,37 @@ import prisma from '@/lib/prisma';
 export async function POST(req: Request) {
   try {
     const { userId } = await auth();
-    if (!userId) return new NextResponse('Unauthorized', { status: 401 });
+    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    // Vérifier que l'utilisateur a les droits
     const currentUser = await prisma.user.findUnique({
       where: { clerkUserId: userId },
-      select: { role: true }
+      select: { role: true },
     });
 
     if (!currentUser || currentUser.role !== 'SUPER_ADMIN') {
-      return new NextResponse('Forbidden', { status: 403 });
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     const { clerkUserId, role } = await req.json();
 
-    // Mettre à jour l'utilisateur
+    if (!clerkUserId || !role) {
+      return NextResponse.json({ error: 'Missing clerkUserId or role' }, { status: 400 });
+    }
+
+    // Vérification rôle valide (optionnel selon ton enum Prisma)
+    const validRoles = ['SUPER_ADMIN', 'ADMIN', 'DENTIST', 'ASSISTANT'];
+    if (!validRoles.includes(role)) {
+      return NextResponse.json({ error: 'Invalid role' }, { status: 400 });
+    }
+
     const updatedUser = await prisma.user.update({
       where: { clerkUserId },
-      data: { role }
+      data: { role },
     });
 
     return NextResponse.json(updatedUser);
   } catch (error) {
-    return new NextResponse('Internal Server Error', { status: 500 });
+    console.error('[ASSIGN_ROLE_ERROR]', error);
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }

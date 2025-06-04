@@ -1,19 +1,15 @@
-import { FiSave, FiX, FiDollarSign } from 'react-icons/fi';
+import { FiX, FiDollarSign } from 'react-icons/fi';
 import Link from 'next/link';
 import { getConsultationById, updateConsultation } from '../../action';
 import { addTreatmentPayment } from '../../../payments/action';
 
 export default async function EditConsultation({ params }: { params: { id: string } }) {
   const consultation = await getConsultationById(params.id);
-  
-  // Formatage de la date pour l'input date
-  const formattedDate = consultation.date instanceof Date 
-    ? consultation.date.toISOString().split('T')[0]
-    : new Date(consultation.date).toISOString().split('T')[0];
+  const treatments = consultation.treatments || [];
 
-  // Calcul des montants pour les traitements seulement
-  const treatmentsCost = consultation.treatments.reduce((total, treatment) => total + treatment.amount, 0);
-  const treatmentsPaid = consultation.treatments.reduce((total, treatment) => total + treatment.paidAmount, 0);
+  // Calcul des montants
+  const treatmentsCost = treatments.reduce((total, treatment) => total + treatment.amount, 0);
+  const treatmentsPaid = treatments.reduce((total, treatment) => total + treatment.paidAmount, 0);
   const remainingAmount = treatmentsCost - treatmentsPaid;
 
   return (
@@ -88,7 +84,7 @@ export default async function EditConsultation({ params }: { params: { id: strin
                       required
                     >
                       <option value="">Sélectionner un traitement</option>
-                      {consultation.treatments
+                      {treatments
                         .filter(t => t.amount > t.paidAmount)
                         .map(treatment => (
                           <option key={treatment.id} value={treatment.id}>
@@ -124,32 +120,36 @@ export default async function EditConsultation({ params }: { params: { id: strin
             <div className="mt-6">
               <h4 className="font-medium text-gray-700 dark:text-gray-300 mb-2">Détails des traitements</h4>
               <div className="space-y-3">
-                {consultation.treatments.map(treatment => (
-                  <div key={treatment.id} className="bg-white dark:bg-gray-800 p-3 rounded border dark:border-gray-700">
-                    <div className="flex justify-between">
-                      <div>
-                        <p className="font-medium dark:text-white">{treatment.type}</p>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">
-                          {treatment.amount.toLocaleString()} FCFA
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p className={`font-medium ${
-                          treatment.status === 'PAID' ? 'text-green-600 dark:text-green-400' :
-                          treatment.status === 'PARTIAL' ? 'text-blue-600 dark:text-blue-400' : 'text-yellow-600 dark:text-yellow-400'
-                        }`}>
-                          {treatment.status === 'PAID' ? 'Payé' : 
-                           treatment.status === 'PARTIAL' ? 'Partiel' : 'Non payé'}
-                        </p>
-                        {treatment.status !== 'UNPAID' && (
+                {treatments.length === 0 ? (
+                  <p className="text-gray-500 dark:text-gray-400 text-center py-4">Aucun traitement enregistré</p>
+                ) : (
+                  treatments.map(treatment => (
+                    <div key={treatment.id} className="bg-white dark:bg-gray-800 p-3 rounded border dark:border-gray-700">
+                      <div className="flex justify-between">
+                        <div>
+                          <p className="font-medium dark:text-white">{treatment.type}</p>
                           <p className="text-sm text-gray-500 dark:text-gray-400">
-                            {treatment.paidAmount.toLocaleString()} FCFA payés
+                            {treatment.amount.toLocaleString()} FCFA
                           </p>
-                        )}
+                        </div>
+                        <div className="text-right">
+                          <p className={`font-medium ${
+                            treatment.status === 'PAID' ? 'text-green-600 dark:text-green-400' :
+                            treatment.status === 'PARTIAL' ? 'text-blue-600 dark:text-blue-400' : 'text-yellow-600 dark:text-yellow-400'
+                          }`}>
+                            {treatment.status === 'PAID' ? 'Payé' : 
+                             treatment.status === 'PARTIAL' ? 'Partiel' : 'Non payé'}
+                          </p>
+                          {treatment.status !== 'UNPAID' && (
+                            <p className="text-sm text-gray-500 dark:text-gray-400">
+                              {treatment.paidAmount.toLocaleString()} FCFA payés
+                            </p>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             </div>
           </div>

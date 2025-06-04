@@ -7,25 +7,21 @@ const isProtectedRoute = createRouteMatcher([
   '/appointments(.*)',
   '/products(.*)',
   '/payments(.*)',
-  '/admin(.*)'
+  '/admin(.*)',
 ]);
 
 export default clerkMiddleware(async (auth, req) => {
-  if (!isProtectedRoute(req)) {
-    return NextResponse.next();
-  }
+  if (!isProtectedRoute(req)) return NextResponse.next();
 
   const { userId } = await auth();
-
   if (!userId) {
     return NextResponse.redirect(new URL('/sign-in', req.url));
   }
 
+  // Ne pas utiliser Prisma ici : la logique d'abonnement est déplacée dans la page elle-même
   return NextResponse.next();
 });
 
 export const config = {
-  matcher: [
-    "/((?!_next|favicon.ico|sw.js|manifest.json|offline.html|images|api/public).*)",
-  ],
+  matcher: ['/((?!_next|static|favicon.ico|api/auth).*)'],
 };

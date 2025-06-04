@@ -13,8 +13,11 @@ export async function getTodaysAppointments() {
     });
   
     if (!user) throw new Error("Utilisateur non trouvé");
-    // Filtre par clinique si l'utilisateur n'est pas SUPER_ADMIN
-    const clinicFilter = user.role !== 'SUPER_ADMIN'? { clinicId: user.clinicId } : {};
+    
+    // Correction: Gestion du clinicId null
+    const clinicFilter = user.role !== 'SUPER_ADMIN' && user.clinicId 
+      ? { clinicId: user.clinicId } 
+      : {};
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -48,7 +51,7 @@ export async function getTodaysAppointments() {
         date: true,
         reason: true,
         status: true,
-        clinic: user.role === 'SUPER_ADMIN'  ? { select: { name: true } } : undefined
+        clinic: user.role === 'SUPER_ADMIN' ? { select: { name: true } } : undefined
       }
     });
 }
@@ -58,14 +61,20 @@ export async function getLowStockProducts(threshold = 3) {
   if (!userId) throw new Error('Non autorisé');
 
   const user = await prisma.user.findUnique({
-    where: { clerkUserId: userId }
+    where: { clerkUserId: userId },
+    include: { clinic: true }
   });
 
   if (!user) throw new Error('Utilisateur non trouvé');
 
+  const clinicFilter =
+    user.role !== 'SUPER_ADMIN' && user.clinicId
+      ? { clinicId: user.clinicId }
+      : {};
+
   return await prisma.product.findMany({
     where: {
-      userId: user.id,
+      ...clinicFilter,
       stock: { lt: threshold }
     },
     select: {
@@ -76,6 +85,8 @@ export async function getLowStockProducts(threshold = 3) {
     orderBy: { stock: 'asc' }
   });
 }
+
+
 export async function getUnpaidTreatments() {
     const { userId } = await auth();
     if (!userId) throw new Error("Non autorisé");
@@ -88,7 +99,9 @@ export async function getUnpaidTreatments() {
     if (!user) throw new Error("Utilisateur non trouvé");
 
     // Filtre par clinique si l'utilisateur n'est pas SUPER_ADMIN
-    const clinicFilter = user.role !== 'SUPER_ADMIN' ? { clinicId: user.clinicId } : {};
+    const clinicFilter = user.role !== 'SUPER_ADMIN' && user.clinicId
+      ? { clinicId: user.clinicId }
+      : {};
 
     // Filtre selon le rôle
     const roleFilter = user.role === 'SUPER_ADMIN' 
@@ -126,7 +139,25 @@ export async function getUnpaidTreatments() {
     });
 }
 
-export async function getDashboardStats() {
+interface DashboardStats {
+  uniqueClients: number;
+  todaysAppointments: number;
+  totalRevenue: number;
+  unpaidTreatments: number;
+  lowStockProducts: Array<{
+    id: string;
+    name: string;
+    stock: number;
+    used: number;
+    price: number;
+    disponible: number;
+  }>;
+  lowStockCount: number;
+  lowStockValue: number;
+  hasLowStockItems: boolean;
+}
+
+export async function getDashboardStats(): Promise<DashboardStats> {
   const { userId } = await auth();
   if (!userId) throw new Error("Non autorisé");
 
@@ -144,7 +175,7 @@ export async function getDashboardStats() {
       todaysAppointments,
       totalRevenue,
       unpaidTreatments,
-      lowStockProducts // Renommé de allProducts à lowStockProducts pour plus de clarté
+      lowStockProducts
     ] = await Promise.all([
       // 1. Patients uniques
       user.role === 'SUPER_ADMIN'
@@ -160,7 +191,7 @@ export async function getDashboardStats() {
       // 2. Rendez-vous du jour
       prisma.appointment.count({
         where: {
-          ...(user.role !== 'SUPER_ADMIN' && { clinicId: user.clinicId }),
+          ...(user.role !== 'SUPER_ADMIN' && user.clinicId && { clinicId: user.clinicId }),
           ...(user.role === 'DENTIST' ? { dentistId: user.id } : 
               user.role === 'ASSISTANT' ? { createdById: user.id } : {}),
           date: {
@@ -187,7 +218,7 @@ export async function getDashboardStats() {
       prisma.treatment.count({
         where: {
           consultation: {
-            ...(user.role !== 'SUPER_ADMIN' && { clinicId: user.clinicId }),
+            ...(user.role !== 'SUPER_ADMIN' && user.clinicId && { clinicId: user.clinicId }),
             ...(user.role !== 'SUPER_ADMIN' && {
               OR: [
                 { assistantId: user.id },
@@ -202,8 +233,8 @@ export async function getDashboardStats() {
       // 5. Produits en faible stock
       prisma.product.findMany({
         where: {
-          ...(user.role !== 'SUPER_ADMIN' && { clinicId: user.clinicId }),
-          stock: { gt: 0 } // Uniquement les produits avec stock > 0
+          ...(user.role !== 'SUPER_ADMIN' && user.clinicId && { clinicId: user.clinicId }),
+          stock: { gt: 0 }
         },
         select: {
           id: true,
@@ -216,13 +247,13 @@ export async function getDashboardStats() {
       })
     ]);
 
-    // Calcul du disponible et filtrage des produits critiques
-    const productsWithDisponible = lowStockProducts.map(p => ({
+    // Typage explicite pour les produits
+    const productsWithDisponible = lowStockProducts.map((p: { id: string; name: string; stock: number; used: number; price: number }) => ({
       ...p,
       disponible: p.stock - p.used
     }));
 
-    const criticalProducts = productsWithDisponible.filter(p => p.disponible < 3);
+    const criticalProducts = productsWithDisponible.filter((p: { disponible: number; }) => p.disponible < 3);
 
     return {
       uniqueClients: Number(uniquePatients[0]?.count) || 0,
@@ -232,7 +263,7 @@ export async function getDashboardStats() {
       lowStockProducts: criticalProducts,
       lowStockCount: criticalProducts.length,
       lowStockValue: criticalProducts.reduce(
-        (sum, product) => sum + (product.price * product.disponible), 0
+        (sum: number, product: { price: number; disponible: number }) => sum + (product.price * product.disponible), 0
       ),
       hasLowStockItems: criticalProducts.length > 0
     };

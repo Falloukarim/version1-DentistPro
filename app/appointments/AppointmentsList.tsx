@@ -25,14 +25,14 @@ import { Button } from '@/components/ui/button';
 
 export default function AppointmentsList({ appointments: initialAppointments }: { appointments: Appointment[] }) {
   const router = useRouter();
-  const { user: clerkUser, isLoaded } = useUser();
+  const { user: isLoaded } = useUser();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({
     patientName: '',
     patientPhone: '',
     date: '',
     reason: '',
-    status: 'scheduled' as const
+    status: 'scheduled' as 'scheduled' | 'cancelled' | 'completed' | 'no_show'
   });
 
   if (!isLoaded) {
@@ -174,7 +174,9 @@ export default function AppointmentsList({ appointments: initialAppointments }: 
         <div className="p-4 border-b bg-accent">
           <h2 className="text-xl font-semibold text-primary flex items-center gap-2">
             <FiClock className="text-primary" />
-            Rendez-vous aujourd'hui ({new Date(today).toLocaleDateString('fr-FR')})
+           Rendez-vous aujourd&apos;hui
+
+({new Date(today).toLocaleDateString('fr-FR')})
           </h2>
         </div>
         <div className="p-4">
@@ -220,8 +222,8 @@ export default function AppointmentsList({ appointments: initialAppointments }: 
             </div>
           ) : (
             <div className="text-center py-8 text-muted-foreground">
-              Aucun rendez-vous prévu aujourd'hui
-            </div>
+Aucun rendez-vous enregistré
+</div>
           )}
         </div>
       </div>

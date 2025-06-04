@@ -12,6 +12,8 @@ type NoteEditorProps = {
   editable: boolean;
   title: string;
   author?: string;
+  className?: string;  
+
 };
 
 export default function NoteEditor({

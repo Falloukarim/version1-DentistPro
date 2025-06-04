@@ -1,73 +1,144 @@
-import { NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
+export const dynamic = 'force-dynamic';
+export const fetchCache = 'force-no-store';
+
+import { NextRequest, NextResponse } from 'next/server';
+import { getAuth } from '@clerk/nextjs/server';
 import prisma from '@/lib/prisma';
-import { 
+import {
   unauthorizedResponse,
   forbiddenResponse,
-  badRequestResponse,
-  serverErrorResponse
+  notFoundResponse,
+  serverErrorResponse,
+  badRequestResponse
 } from '@/lib/api-helpers';
 
-export async function POST(req: Request) {
+// ✅ Correction ici : bon typage des paramètres context
+type RouteContext = {
+  params: Record<string, string>;
+};
+
+// GET /api/clinics/[id]
+export async function GET(request: NextRequest, context: RouteContext) {
+  const { id } = context.params;
+
   try {
-    const { userId } = await auth();
+    const { userId } = getAuth(request);
     if (!userId) return unauthorizedResponse();
 
-    const currentUser = await prisma.user.findUnique({
+    const user = await prisma.user.findUnique({
       where: { clerkUserId: userId },
-      select: { role: true }
+      select: { role: true, clinicId: true }
     });
 
-    if (currentUser?.role !== 'SUPER_ADMIN') return forbiddenResponse();
+    if (!user) return unauthorizedResponse();
 
-    const body = await req.json();
-    console.log('Received data:', body); // Pour le débogage
-
-    // Validation améliorée
-    const { firstName, lastName, email, clerkUserId, role } = body;
-    
-    if (!firstName?.trim()) return badRequestResponse("Le prénom est requis");
-    if (!email?.trim()) return badRequestResponse("L'email est requis");
-    if (!clerkUserId?.trim()) return badRequestResponse("L'ID Clerk est requis");
-    if (!role || !['DENTIST', 'ADMIN'].includes(role)) {
-      return badRequestResponse("Rôle invalide");
+    if (user.role !== 'SUPER_ADMIN' && user.clinicId !== id) {
+      return forbiddenResponse();
     }
 
-    // Vérification de l'email
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      return badRequestResponse("Format d'email invalide");
-    }
-
-    // Vérification des doublons
-    const existingUser = await prisma.user.findFirst({
-      where: {
-        OR: [
-          { email: email.trim() },
-          { clerkUserId: clerkUserId.trim() }
-        ]
-      }
-    });
-
-    if (existingUser) {
-      return badRequestResponse("Un utilisateur avec cet email ou ID Clerk existe déjà");
-    }
-
-    // Création de l'utilisateur
-    const newUser = await prisma.user.create({
-      data: {
-        clerkUserId: clerkUserId.trim(),
-        firstName: firstName.trim(),
-        lastName: lastName?.trim() || "",
-        email: email.trim(),
-        role,
+    const clinic = await prisma.clinic.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        name: true,
+        address: true,
+        phone: true,
+        email: true,
+        logoUrl: true,
+        primaryColor: true,
+        secondaryColor: true,
         isActive: true
       }
     });
 
-    return NextResponse.json(newUser, { status: 201 });
-  } catch (error: any) {
-    console.error("Error in /api/add-dentist:", error);
+    if (!clinic) return notFoundResponse();
+
+    return NextResponse.json(clinic);
+  } catch (error) {
+    return serverErrorResponse(error);
+  }
+}
+
+// PATCH /api/clinics/[id]
+export async function PATCH(request: NextRequest, context: RouteContext) {
+  const { id } = context.params;
+
+  try {
+    const { userId } = getAuth(request);
+    if (!userId) return unauthorizedResponse();
+
+    const user = await prisma.user.findUnique({
+      where: { clerkUserId: userId },
+      select: { role: true, clinicId: true }
+    });
+
+    if (!user) return unauthorizedResponse();
+
+    if (user.role !== 'SUPER_ADMIN' && user.clinicId !== id) {
+      return forbiddenResponse();
+    }
+
+    const body = await request.json();
+
+    if (body.name && typeof body.name !== 'string') {
+      return badRequestResponse('Nom invalide');
+    }
+
+    const updatedClinic = await prisma.clinic.update({
+      where: { id },
+      data: {
+        name: body.name,
+        address: body.address,
+        phone: body.phone,
+        email: body.email,
+        logoUrl: body.logoUrl,
+        primaryColor: body.primaryColor,
+        secondaryColor: body.secondaryColor
+      },
+      select: {
+        id: true,
+        name: true,
+        address: true,
+        phone: true,
+        email: true,
+        logoUrl: true,
+        primaryColor: true,
+        secondaryColor: true
+      }
+    });
+
+    return NextResponse.json(updatedClinic);
+  } catch (error) {
+    return serverErrorResponse(error);
+  }
+}
+
+// DELETE /api/clinics/[id]
+export async function DELETE(request: NextRequest, context: RouteContext) {
+  const { id } = context.params;
+
+  try {
+    const { userId } = getAuth(request);
+    if (!userId) return unauthorizedResponse();
+
+    const user = await prisma.user.findUnique({
+      where: { clerkUserId: userId },
+      select: { role: true }
+    });
+
+    if (user?.role !== 'SUPER_ADMIN') return forbiddenResponse();
+
+    const clinic = await prisma.clinic.update({
+      where: { id },
+      data: { isActive: false },
+      select: { id: true, name: true }
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: `Clinique ${clinic.name} désactivée`
+    });
+  } catch (error) {
     return serverErrorResponse(error);
   }
 }

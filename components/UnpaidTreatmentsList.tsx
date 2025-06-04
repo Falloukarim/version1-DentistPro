@@ -1,7 +1,8 @@
 // components/UnpaidTreatmentsList.tsx
-import { FiDollarSign, FiUser, FiPhone, FiCalendar } from 'react-icons/fi';
+import { FiDollarSign, FiPhone, FiCalendar } from 'react-icons/fi';
 import Link from 'next/link';
 import { getUnpaidTreatments } from 'app/actions/dashboard.actions';
+import { Key, ReactElement, JSXElementConstructor, ReactNode, ReactPortal } from 'react';
 
 export default async function UnpaidTreatmentsList() {
   const treatments = await getUnpaidTreatments();
@@ -16,7 +17,7 @@ export default async function UnpaidTreatmentsList() {
 
   return (
     <div className="space-y-4 bg-background dark:bg-background p-4 rounded-lg">
-      {treatments.map(treatment => (
+      {treatments.map((treatment: { id: Key | null | undefined; consultation: { patientName: string | number | bigint | boolean | ReactElement<unknown, string | JSXElementConstructor<any>> | Iterable<ReactNode> | ReactPortal | Promise<string | number | bigint | boolean | ReactPortal | ReactElement<unknown, string | JSXElementConstructor<any>> | Iterable<ReactNode> | null | undefined> | null | undefined; patientPhone: string | number | bigint | boolean | ReactElement<unknown, string | JSXElementConstructor<any>> | Iterable<ReactNode> | ReactPortal | Promise<string | number | bigint | boolean | ReactPortal | ReactElement<unknown, string | JSXElementConstructor<any>> | Iterable<ReactNode> | null | undefined> | null | undefined; date: string | number | Date; }; type: string | number | bigint | boolean | ReactElement<unknown, string | JSXElementConstructor<any>> | Iterable<ReactNode> | ReactPortal | Promise<string | number | bigint | boolean | ReactPortal | ReactElement<unknown, string | JSXElementConstructor<any>> | Iterable<ReactNode> | null | undefined> | null | undefined; amount: number; paidAmount: number; status: string; consultationId: any; }) => (
         <div key={treatment.id} className="border-b border-gray-100 dark:border-gray-800 pb-4 last:border-0">
           <div className="flex justify-between items-start gap-2">
             <div className="min-w-0">

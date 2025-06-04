@@ -7,9 +7,11 @@ import { updateConsultationNote } from 'app/consultations/action';
 export default function NoteForm({
   consultationId,
   userRole,
+  userName,  // <--- ajoute userName ici
 }: {
   consultationId: string;
   userRole: 'ASSISTANT' | 'DENTIST' | 'ADMIN';
+  userName: string;   // <--- ajoute userName ici aussi
 }) {
   const [noteType, setNoteType] = useState<'assistant' | 'dentist'>(
     userRole === 'DENTIST' ? 'dentist' : 'assistant'

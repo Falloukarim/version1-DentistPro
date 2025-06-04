@@ -1,20 +1,23 @@
-'use client';
+'use client'; 
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Clinic } from '@prisma/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { toast } from '@/hooks/use-toast';
+import { toast } from 'sonner'; // Changé pour utiliser sonner
 import LogoUpload from './LogoUpload';
 import ColorPicker from './ColorPicker';
 
-// Étendre le type Clinic pour inclure les nouveaux champs
-type ExtendedClinic = Clinic & {
-  primaryColor?: string;
-  secondaryColor?: string;
-  logoUrl?: string;
+type ExtendedClinic = {
+  id: string;
+  name: string;
+  address: string | null;
+  phone: string | null;
+  email: string | null;
+  logoUrl: string | null;
+  primaryColor: string | null;
+  secondaryColor: string | null;
 };
 
 export default function ClinicSettingsForm({ clinic }: { clinic: ExtendedClinic }) {
@@ -54,16 +57,13 @@ export default function ClinicSettingsForm({ clinic }: { clinic: ExtendedClinic 
         throw new Error(errorData.message || 'Échec de la mise à jour');
       }
 
-      toast({
-        title: 'Paramètres sauvegardés',
+      toast.success('Paramètres sauvegardés', {
         description: 'Les modifications ont été enregistrées'
       });
       router.refresh();
     } catch (error) {
-      toast({
-        title: 'Erreur',
-        description: error instanceof Error ? error.message : 'Une erreur est survenue',
-        variant: 'destructive'
+      toast.error('Erreur', {
+        description: error instanceof Error ? error.message : 'Une erreur est survenue'
       });
     } finally {
       setIsLoading(false);
@@ -72,11 +72,11 @@ export default function ClinicSettingsForm({ clinic }: { clinic: ExtendedClinic 
 
   const handleLogoUpload = (url: string) => {
     setFormData(prev => ({ ...prev, logoUrl: url }));
-    toast({
-      title: 'Logo mis à jour',
+    toast.success('Logo mis à jour', {
       description: 'Le logo a été uploadé avec succès'
     });
   };
+  
   
   return (
     <form onSubmit={handleSubmit} className="space-y-6">

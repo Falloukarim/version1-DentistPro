@@ -1,24 +1,44 @@
-import prisma  from "./prisma";
-import { getCurrentUser } from "./auth";
+import prisma from "./prisma";
 
-export async function getUserClinic() {
-  const user = await getCurrentUser();
-  
-  if (!user) throw new Error("Utilisateur non authentifié");
-  if (!user.clinicId && user.role !== 'SUPER_ADMIN') {
-    throw new Error("Aucune clinique assignée");
+type User = {
+  id: string;
+  role: string;
+  clinicId?: string | null;
+};
+
+/**
+ * Récupère la clinique d’un utilisateur (en ligne uniquement)
+ */
+export async function getUserClinic(user: User) {
+  if (!user) throw new Error("Utilisateur requis");
+  if (!user.clinicId && user.role !== "SUPER_ADMIN") {
+    throw new Error("Aucune clinique assignée à l'utilisateur");
   }
 
-  return user.clinicId 
-    ? await prisma.clinic.findUnique({ where: { id: user.clinicId } })
-    : null;
+  return user.clinicId
+    ? await prisma.clinic.findUnique({
+        where: { id: user.clinicId },
+      })
+    : null; // SUPER_ADMIN sans clinique
 }
 
-export async function verifyClinicAccess(clinicId: string) {
-  const user = await getCurrentUser();
-  
-  if (user?.role === 'SUPER_ADMIN') return true;
-  if (user?.clinicId === clinicId) return true;
+/**
+ * Vérifie si un utilisateur a accès à une clinique donnée (en ligne uniquement)
+ */
+export async function verifyClinicAccess(user: User, clinicId: string) {
+  if (!user) throw new Error("Utilisateur requis");
 
-  throw new Error("Accès à la clinique non autorisé");
+  if (user.role === "SUPER_ADMIN") return true;
+  if (user.clinicId === clinicId) return true;
+
+  throw new Error("Accès refusé à cette clinique");
+}
+
+/**
+ * Récupère les utilisateurs d’une clinique (en ligne uniquement)
+ */
+export async function getClinicUsers(clinicId: string) {
+  return await prisma.user.findMany({
+    where: { clinicId },
+  });
 }

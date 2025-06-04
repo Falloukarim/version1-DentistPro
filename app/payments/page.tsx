@@ -1,6 +1,6 @@
 'use client';
 
-import { FiArrowLeft, FiDollarSign, FiCheck, FiCircle, FiUser, FiFilter } from "react-icons/fi";
+import { FiArrowLeft, FiDollarSign } from "react-icons/fi";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -8,6 +8,41 @@ import { getPaymentHistory } from "./action";
 import LoadingSpinner from "../../components/ui/LoadingSpinner";
 import ErrorAlert from "../../components/ErrorAlert";
 
+// Type pour les données retournées par l'API
+type ApiPayment = {
+  id: string;
+  amount: number;
+  paymentMethod: string;
+  paymentDate: Date | string;
+  reference?: string | null;
+  notes?: string | null;
+  consultation?: {
+    id: string;
+    patientName: string;
+    patientPhone: string;
+    createdAt: Date | string;
+    clinic?: {
+      id: string;
+      name: string;
+    } | null;
+  } | null;
+  treatment?: {
+    id: string;
+    type: string;
+    amount: number;
+  } | null;
+  createdBy: {
+    id: string;
+    firstName: string;
+    lastName: string;
+  };
+  clinic?: {
+    id: string;
+    name: string;
+  } | null;
+};
+
+// Type pour le composant
 interface Payment {
   id: string;
   amount: number;
@@ -20,6 +55,10 @@ interface Payment {
     patientName: string;
     patientPhone: string;
     date: Date;
+    clinic?: {
+      id: string;
+      name: string;
+    };
   };
   treatment?: {
     id: string;
@@ -27,6 +66,7 @@ interface Payment {
     amount: number;
   };
   createdBy: {
+    id: string;
     firstName: string;
     lastName: string;
   };
@@ -44,8 +84,56 @@ export default function PaymentsPage() {
       try {
         setLoading(true);
         const data = await getPaymentHistory();
-        console.log('Fetched payments:', data); // Log pour vérifier les données
-        setPayments(data || []); // Assurez-vous que payments est toujours un tableau
+        
+        // Transformation avec vérification de type
+       // Modifiez la transformation des données comme ceci :
+const transformedPayments = (data ?? []).map((payment: ApiPayment) => {
+  // Vérification des dates
+  const paymentDate = typeof payment.paymentDate === 'string' 
+    ? new Date(payment.paymentDate) 
+    : payment.paymentDate;
+
+  const basePayment: Payment = {
+    id: payment.id,
+    amount: payment.amount,
+    paymentMethod: payment.paymentMethod,
+    paymentDate,
+    reference: payment.reference ?? undefined,
+    notes: payment.notes ?? undefined,
+    createdBy: payment.createdBy
+  };
+
+  // Gestion sécurisée de la consultation
+  if (payment.consultation) {
+    const consultationDate = typeof payment.consultation.createdAt === 'string'
+      ? new Date(payment.consultation.createdAt)
+      : payment.consultation.createdAt;
+
+    basePayment.consultation = {
+      id: payment.consultation.id,
+      patientName: payment.consultation.patientName,
+      patientPhone: payment.consultation.patientPhone,
+      date: consultationDate,
+      clinic: payment.consultation.clinic ? {
+        id: payment.consultation.clinic.id,
+        name: payment.consultation.clinic.name
+      } : undefined
+    };
+  }
+
+  // Gestion sécurisée du traitement
+  if (payment.treatment) {
+    basePayment.treatment = {
+      id: payment.treatment.id,
+      type: payment.treatment.type,
+      amount: payment.treatment.amount
+    };
+  }
+
+  return basePayment;
+});
+        
+        setPayments(transformedPayments);
       } catch (err) {
         console.error('Fetch error:', err);
         setError(err instanceof Error ? err.message : "Une erreur est survenue");
@@ -53,9 +141,10 @@ export default function PaymentsPage() {
         setLoading(false);
       }
     };
-  
+
     fetchData();
   }, []);
+
 
   const clearError = () => setError(null);
 
@@ -83,6 +172,7 @@ export default function PaymentsPage() {
           <button 
             onClick={() => router.back()} 
             className="text-gray-500 hover:text-gray-700"
+            aria-label="Retour"
           >
             <FiArrowLeft size={20} />
           </button>
@@ -95,7 +185,7 @@ export default function PaymentsPage() {
         <div className="flex gap-2">
           <select
             value={filter}
-            onChange={(e) => setFilter(e.target.value as any)}
+            onChange={(e) => setFilter(e.target.value as typeof filter)}
             className="border border-gray-300 rounded-md px-3 py-1 text-sm"
           >
             <option value="all">Tous les paiements</option>
@@ -152,11 +242,12 @@ export default function PaymentsPage() {
                             <Link 
                               href={`/consultations/${payment.consultation.id}`}
                               className="text-blue-600 hover:underline"
+                              prefetch={false}
                             >
                               {payment.consultation.patientName}
                             </Link>
                             <div className="text-xs text-gray-300">
-                              {new Date(payment.consultation.date).toLocaleDateString()}
+                              {payment.consultation.date.toLocaleDateString()}
                             </div>
                           </>
                         ) : payment.treatment ? (
@@ -179,7 +270,7 @@ export default function PaymentsPage() {
                        'Autre'}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-300">
-                      {new Date(payment.paymentDate).toLocaleDateString('fr-FR')}
+                      {payment.paymentDate.toLocaleDateString('fr-FR')}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-300">
                       {payment.createdBy.firstName} {payment.createdBy.lastName}

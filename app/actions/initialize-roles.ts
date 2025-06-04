@@ -1,10 +1,11 @@
 'use server';
 
-import prisma from '@/lib/prisma'; // Chemin relatif selon votre structureimport { headers } from 'next/headers';
+import prisma from '@/lib/prisma'; 
+import { headers } from 'next/headers';
 
 export async function initializeRoles() {
-  // 1. Vérification du token
-  const authHeader = headers().get('X-Init-Token');
+
+  const authHeader = (await headers()).get('X-Init-Token');
   if (authHeader !== process.env.INIT_SECRET) {
     throw new Error('Unauthorized: Token invalide');
   }

@@ -3,83 +3,116 @@
 import { auth } from '@clerk/nextjs/server';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import prisma from '@/lib/prisma'
-import  Prisma  from '@prisma/client';
+import prisma from '@/lib/prisma';
+import { Role } from '@prisma/client';
 
 // Types
 interface Dentist {
-    id: string;
-    firstName: string;
-    lastName: string;
-  }
-  
-  interface TreatmentInput {
-    id?: string;
-    type: string;
-    amount: number;
-    paidAmount?: number;
-    status?: 'UNPAID' | 'PAID' | 'PARTIAL';
-    createdAt?: Date | string;
-    consultationId?: string;
-  }
-  
-  interface ConsultationInput {
-    id?: string;
-    patientName: string;
-    patientPhone: string;
-    patientAddress?: string | null;
-    patientAge?: number | null;
-    patientGender?: string | null;
-    date: Date | string;
-    description?: string | null;
-    isPaid: boolean;
-    treatments?: TreatmentInput[];
-    assistantId: string;
-    dentistId: string;
-    createdAt?: Date | string;
-    updatedAt?: Date | string;
-  }
-  
-  export interface Consultation {
-    id: string;
-    patientName: string;
-    patientPhone: string;
-    patientAddress?: string | null;
-    patientAge?: number | null;
-    patientGender?: string | null;
-    date: Date;
-    description?: string | null;
-    isPaid: boolean;
-    treatments: Treatment[];
-    assistantId: string;
-    dentistId: string;
-    createdAt: Date;
-    updatedAt: Date;
-  }
-  
-  interface Treatment {
-    id: string;
-    type: string;
-    amount: number;
-    paidAmount: number;
-    status: 'UNPAID' | 'PAID' | 'PARTIAL';
-    createdAt: Date;
-    consultationId: string;
-  }
+  id: string;
+  firstName: string;
+  lastName: string;
+}
+
+interface TreatmentInput {
+  id?: string;
+  type: string;
+  amount: number;
+  paidAmount?: number;
+  status?: 'UNPAID' | 'PAID' | 'PARTIAL';
+  createdAt?: Date | string;
+  consultationId?: string;
+}
+
+interface ConsultationInput {
+  id?: string;
+  patientName: string;
+  patientPhone: string;
+  patientAddress?: string | null;
+  patientAge?: number | null;
+  patientGender?: string | null;
+  date: Date | string;
+  description?: string | null;
+  isPaid: boolean;
+  treatments?: TreatmentInput[];
+  assistantId: string;
+  dentistId: string;
+  createdAt?: Date | string;
+  updatedAt?: Date | string;
+}
+
+export interface Consultation {
+  id: string;
+  patientName: string;
+  patientPhone: string;
+  patientAddress?: string | null;
+  patientAge?: number | null;
+  patientGender?: string | null;
+  date: Date;
+  description?: string | null;
+  isPaid: boolean;
+  treatments?: Treatment[];
+  assistantId: string | null;
+  dentistId?: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+interface Treatment {
+  id: string;
+  type: string;
+  amount: number;
+  paidAmount: number;
+  status: 'UNPAID' | 'PAID' | 'PARTIAL';
+  createdAt: Date;
+  consultationId: string;
+  description?: string;
+}
+
+// Helper de conversion pour updateConsultation
+interface UpdateData {
+  patientName?: string;
+  patientPhone?: string;
+  patientAddress?: string | null;
+  patientAge?: number | null;
+  patientGender?: string | null;
+  date?: Date;
+  description?: string | null;
+  isPaid?: boolean;
+  updatedAt: Date;
+}
+
+function toUpdateData(data: Partial<ConsultationInput>): UpdateData {
+  return {
+    ...data,
+    date: data.date ? (data.date instanceof Date ? data.date : new Date(data.date)) : undefined,
+    updatedAt: new Date(),
+    patientAddress: data.patientAddress === null ? null : data.patientAddress,
+    patientAge: data.patientAge === null ? null : data.patientAge,
+    patientGender: data.patientGender === null ? null : data.patientGender,
+    description: data.description === null ? null : data.description
+  };
+}
+
 
   export async function getAvailableDentists(): Promise<Dentist[]> {
     try {
       const { userId } = await auth();
+
+      if (!userId) {
+        throw new Error("Utilisateur non authentifié");
+      }
+      
       const user = await prisma.user.findUnique({
         where: { clerkUserId: userId },
         select: { clinicId: true, role: true }
       });
+      
   
-      const whereClause = user?.role === 'SUPER_ADMIN' 
-        ? { role: 'DENTIST' }
-        : { 
-            role: 'DENTIST',
-            clinicId: user?.clinicId 
+      const whereClause = user?.role === Role.SUPER_ADMIN
+        ? { role: Role.DENTIST }
+        : {
+            role: Role.DENTIST,
+            clinicId: user?.clinicId ?? undefined // éviter null si problématique
           };
   
       return await prisma.user.findMany({
@@ -92,17 +125,19 @@ interface Dentist {
     }
   }
   
-  export async function addConsultation(prevState: any, formData: FormData | null) {
+  export async function addConsultation(
+    prevState: { error?: string; success?: boolean } | null,
+    formData: FormData | null
+  ) {
     if (!formData) return prevState;
-    
+  
     try {
       const { userId } = await auth();
       if (!userId) throw new Error('Non autorisé');
   
-      // Récupérer l'utilisateur avec sa clinique
       const user = await prisma.user.findUnique({
         where: { clerkUserId: userId },
-        include: { clinic: true }
+        include: { clinic: true },
       });
   
       if (!user) throw new Error('Utilisateur non trouvé');
@@ -110,7 +145,6 @@ interface Dentist {
         throw new Error('Aucune clinique assignée');
       }
   
-      // Validation des champs
       const dentistId = formData.get('dentistId') as string;
       if (!dentistId) throw new Error('Veuillez sélectionner un dentiste');
   
@@ -122,43 +156,69 @@ interface Dentist {
       const patientPhone = formData.get('patientPhone') as string;
       const phoneRegex = /^(77|76|70|78|75)[0-9]{7}$/;
       if (!phoneRegex.test(patientPhone)) {
-        throw new Error('Numéro Sénégalais invalide. Doit commencer par 77, 76, 70, 78 ou 75 et avoir 9 chiffres');
+        throw new Error('Numéro Sénégalais invalide');
       }
   
       const date = formData.get('date') as string;
       if (!date) throw new Error('Veuillez sélectionner une date');
   
-      // Transaction Prisma
-      const result = await prisma.$transaction(async (prisma) => {
-        // Créer la consultation
+      const isPaid = formData.get('isPaid') === 'true';
+      const consultationFee = Number(formData.get('consultationFee')) || 3000; // Récupérer le montant saisi
+  
+      const consultation = await prisma.$transaction(async (prisma: {
+          consultation: { create: (arg0: { data: { patientName: string; patientPhone: string; patientAddress: string | null; patientAge: number | null; patientGender: string | null; date: Date; description: string | null; isPaid: boolean; clinic: { connect: { id: any; }; }; assistant: { connect: { id: any; }; }; dentist: { connect: { id: string; }; }; createdBy: { connect: { id: any; }; }; }; }) => any; }; treatment: {
+            create: (arg0: {
+              data: {
+                type: string; amount: number; // Utiliser le montant saisi
+                paidAmount: number; remainingAmount: number; status: string; consultation: { connect: { id: any; }; }; clinic: { connect: { id: any; }; };
+              };
+            }) => any;
+          }; payment: { create: (arg0: { data: { amount: number; paymentMethod: string; paymentDate: Date; consultation: { connect: { id: any; }; }; treatment: { connect: { id: any; }; }; createdBy: { connect: { id: any; }; }; clinic: { connect: { id: any; }; }; }; }) => any; };
+        }) => {
+        // Création de la consultation
         const consultation = await prisma.consultation.create({
           data: {
             patientName,
             patientPhone,
             patientAddress: formData.get('patientAddress') as string || null,
-            patientAge: formData.get('patientAge') ? parseInt(formData.get('patientAge') as string) : null,
+            patientAge: formData.get('patientAge')
+              ? parseInt(formData.get('patientAge') as string)
+              : null,
             patientGender: formData.get('patientGender') as string || null,
             date: new Date(date),
             description: formData.get('description') as string || null,
-            isPaid: formData.get('isPaid') === 'true',
+            isPaid,
             clinic: { connect: { id: user.clinicId! } },
             assistant: { connect: { id: user.id } },
             dentist: { connect: { id: dentistId } },
-            createdBy: { connect: { id: user.id } }
+            createdBy: { connect: { id: user.id } },
+          },
+        });
+  
+        // Création automatique d'un traitement de consultation
+        const treatment = await prisma.treatment.create({
+          data: {
+            type: "Consultation",
+            amount: consultationFee, // Utiliser le montant saisi
+            paidAmount: isPaid ? consultationFee : 0,
+            remainingAmount: isPaid ? 0 : consultationFee,
+            status: isPaid ? "PAID" : "UNPAID",
+            consultation: { connect: { id: consultation.id } },
+            clinic: { connect: { id: user.clinicId! } }
           }
         });
   
-        // Créer le paiement si la consultation est payée
-        if (formData.get('isPaid') === 'true') {
+        if (isPaid) {
           await prisma.payment.create({
             data: {
-              amount: 3000,
+              amount: consultationFee,
               paymentMethod: 'CASH',
               paymentDate: new Date(),
               consultation: { connect: { id: consultation.id } },
+              treatment: { connect: { id: treatment.id } },
               createdBy: { connect: { id: user.id } },
-              clinic: { connect: { id: user.clinicId! } }
-            }
+              clinic: { connect: { id: user.clinicId! } },
+            },
           });
         }
   
@@ -166,12 +226,12 @@ interface Dentist {
       });
   
       revalidatePath('/consultations');
-      return { success: true };
+      return { success: true, id: consultation.id };
       
     } catch (error) {
       console.error('Erreur:', error);
-      return { 
-        error: error instanceof Error ? error.message : 'Une erreur inconnue est survenue'
+      return {
+        error: error instanceof Error ? error.message : 'Une erreur inconnue est survenue',
       };
     }
   }
@@ -179,64 +239,84 @@ interface Dentist {
   // Fonction pour obtenir les consultations selon le rôle
   export async function fetchConsultations(): Promise<Consultation[]> {
     const { userId } = await auth();
+  
+    if (!userId) {
+      throw new Error("Utilisateur non authentifié");
+    }
+    
     const user = await prisma.user.findUnique({
       where: { clerkUserId: userId },
-      include: { clinic: true }
+      select: { id: true, clinicId: true, role: true }
     });
   
-    const baseWhere = user?.role === 'SUPER_ADMIN' 
-      ? {}
-      : { clinicId: user?.clinicId };
+    if (!user) {
+      throw new Error("Utilisateur non trouvé");
+    }
   
-    const roleWhere = user?.role === 'ASSISTANT' 
-      ? { assistantId: user.id }
-      : user?.role === 'DENTIST' 
-        ? { dentistId: user.id }
-        : {};
+    // Création de la clause where de manière sécurisée
+    const where: Record<string, any> = {};
   
-    return await prisma.consultation.findMany({
-      where: { ...baseWhere, ...roleWhere },
+    if (user.role !== 'SUPER_ADMIN' && user.clinicId) {
+      where.clinicId = user.clinicId;
+    }
+  
+    if (user.role === 'ASSISTANT') {
+      where.assistantId = user.id;
+    } else if (user.role === 'DENTIST') {
+      where.dentistId = user.id;
+    }
+  
+    const consultations = await prisma.consultation.findMany({
+      where,
       include: { 
         treatments: true,
-        clinic: user?.role === 'SUPER_ADMIN' ? true : false
+        clinic: user.role === 'SUPER_ADMIN' ? true : false
       },
       orderBy: { date: 'desc' }
     });
+  
+    // Transformation pour garantir le type Consultation
+    return consultations.map((consultation: { treatments: any; }) => ({
+      ...consultation,
+      treatments: consultation.treatments || [] // Garantit un tableau même si undefined
+    }));
   }
 
-export async function updateConsultation(id: string, data: Partial<ConsultationInput>) {
-  const { userId } = await auth();
-  if (!userId) throw new Error('Non autorisé');
-
-  const user = await prisma.user.findUnique({
-    where: { clerkUserId: userId }
-  });
-
-  if (!user) throw new Error('Utilisateur non trouvé');
-
-  const updateData: any = {
-    ...data,
-    updatedAt: new Date()
-  };
-
-  if (data.date) {
-    updateData.date = new Date(data.date);
+  export async function updateConsultation(id: string, data: Partial<ConsultationInput>) {
+    const { userId } = await auth();
+    if (!userId) throw new Error('Non autorisé');
+  
+    const user = await prisma.user.findUnique({
+      where: { clerkUserId: userId }
+    });
+  
+    if (!user) throw new Error('Utilisateur non trouvé');
+  
+    // Vérifier si la consultation existe et que l'utilisateur a les droits
+    const existingConsultation = await prisma.consultation.findUnique({
+      where: { id, assistantId: user.id }
+    });
+  
+    if (!existingConsultation) {
+      throw new Error('Consultation non trouvée ou droits insuffisants');
+    }
+  
+    // Conversion des données avec notre helper
+    const updateData = toUpdateData(data);
+  
+    try {
+      await prisma.consultation.update({
+        where: { id, assistantId: user.id },
+        data: updateData
+      });
+  
+      revalidatePath('/consultations');
+      redirect(`/consultations/${id}`);
+    } catch (error) {
+      console.error('Erreur lors de la mise à jour:', error);
+      throw new Error('Échec de la mise à jour de la consultation');
+    }
   }
-
-  // Gestion des champs nullables
-  if (data.patientAddress === null) updateData.patientAddress = null;
-  if (data.patientAge === null) updateData.patientAge = null;
-  if (data.patientGender === null) updateData.patientGender = null;
-  if (data.description === null) updateData.description = null;
-
-  await prisma.consultation.update({
-    where: { id, assistantId: user.id },
-    data: updateData
-  });
-
-  revalidatePath('/consultations');
-  redirect(`/consultations/${id}`);
-}
 export async function getTreatmentById(id: string) {
     return await prisma.treatment.findUnique({
       where: { id }
@@ -291,7 +371,7 @@ export async function getTreatmentById(id: string) {
       throw new Error('Aucune clinique assignée');
     }
   
-    await prisma.$transaction(async (prisma) => {
+    await prisma.$transaction(async (prisma: { treatment: { create: (arg0: { data: { type: string; amount: number; paidAmount: number; remainingAmount: number; status: "UNPAID" | "PAID" | "PARTIAL"; consultation: { connect: { id: string; }; }; clinic: { connect: { id: any; }; }; }; }) => any; }; payment: { create: (arg0: { data: { amount: number; paymentMethod: string; paymentDate: Date; treatment: { connect: { id: any; }; }; createdBy: { connect: { id: any; }; }; clinic: { connect: { id: any; }; }; }; }) => any; }; }) => {
       // 1. Créer le traitement
       const treatment = await prisma.treatment.create({
         data: {
@@ -449,7 +529,7 @@ export async function getConsultationNotes(consultationId: string) {
   
     return {
       ...consultation,
-      treatments: consultation.treatments.map(t => ({
+      treatments: consultation.treatments.map((t: { status: string; }) => ({
         ...t,
         status: t.status as 'UNPAID' | 'PAID' | 'PARTIAL'
       }))

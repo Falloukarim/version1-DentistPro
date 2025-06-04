@@ -1,10 +1,11 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, NextRequest } from 'next/server';
 import { getAuth } from '@clerk/nextjs/server';
 import cloudinary from '@/lib/cloudinary';
 import prisma from '@/lib/prisma';
+import type { UploadApiResponse } from 'cloudinary';
 
-export async function POST(req: Request) {
-  const { userId } = getAuth(req as any);
+export async function POST(req: NextRequest) {
+  const { userId } = getAuth(req);
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const formData = await req.formData();
@@ -20,7 +21,7 @@ export async function POST(req: Request) {
 
   try {
     const buffer = await file.arrayBuffer();
-    const uploadResult = await new Promise((resolve, reject) => {
+    const uploadResult = await new Promise<UploadApiResponse>((resolve, reject) => {
       cloudinary.uploader.upload_stream(
         {
           folder: `dentiste-pro/clinics/${clinicId}`,
@@ -28,17 +29,21 @@ export async function POST(req: Request) {
           overwrite: true,
           transformation: [{ width: 300, height: 300, crop: 'limit' }]
         },
-        (error, result) => error ? reject(error) : resolve(result)
+        (cloudError, result) => {
+          if (cloudError) return reject(cloudError);
+          resolve(result as UploadApiResponse);
+        }
       ).end(Buffer.from(buffer));
     });
 
     await prisma.clinic.update({
       where: { id: clinicId },
-      data: { logoUrl: (uploadResult as any).secure_url }
+      data: { logoUrl: uploadResult.secure_url }
     });
 
     return NextResponse.json({ success: true });
-  } catch (error) {
+  } catch (uploadError: unknown) {
+    console.error('Upload failed:', uploadError);
     return NextResponse.json(
       { error: 'Upload failed' },
       { status: 500 }

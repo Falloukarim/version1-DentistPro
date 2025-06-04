@@ -1,16 +1,22 @@
-import { Suspense } from 'react';
+import { JSXElementConstructor, Key, ReactElement, ReactNode, ReactPortal, Suspense } from 'react';
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { FiUser, FiCalendar, FiDollarSign, FiClock, FiChevronRight, FiPhone, FiPlusCircle, FiPackage } from "react-icons/fi";
+import {
+  FiUser, FiCalendar, FiDollarSign, FiClock,
+  FiChevronRight, FiPhone, FiPlusCircle, FiPackage
+} from "react-icons/fi";
 
 import { auth } from "@clerk/nextjs/server";
+import { PrismaClient } from "@prisma/client";
 import { getDashboardStats, getTodaysAppointments } from "../actions/dashboard.actions";
-import LowStockAlert from 'components/LowStockAlert';
+
 import Layout from "components/layout";
+import LowStockAlert from "components/LowStockAlert";
 import StatCard from "../../components/ui/StatCard";
 import QuickAction from "../../components/ui/QuickAction";
 
-// 📊 Stats Section
+const prisma = new PrismaClient();
+
 async function StatsWrapper() {
   const stats = await getDashboardStats();
 
@@ -48,27 +54,25 @@ async function StatsWrapper() {
           color="red" 
           href="/unpaid-treatments"
         />
-       
       </div>
     </>
   );
 }
 
-// 📅 Rendez-vous du jour
 async function TodaysAppointments() {
   const appointments = await getTodaysAppointments();
 
   if (appointments.length === 0) {
     return (
       <div className="text-center py-4 text-muted-foreground text-sm sm:text-base">
-        Aucun rendez-vous prévu aujourd'hui
+        Aucun rendez-vous prévu aujourd&apos;hui
       </div>
     );
   }
 
   return (
     <div className="space-y-2 sm:space-y-3">
-      {appointments.map(appointment => (
+      {appointments.map((appointment: { id: Key | null | undefined; patientName: string | number | bigint | boolean | ReactElement<unknown, string | JSXElementConstructor<any>> | Iterable<ReactNode> | ReactPortal | Promise<string | number | bigint | boolean | ReactPortal | ReactElement<unknown, string | JSXElementConstructor<any>> | Iterable<ReactNode> | null | undefined> | null | undefined; reason: string | number | bigint | boolean | ReactElement<unknown, string | JSXElementConstructor<any>> | Iterable<ReactNode> | ReactPortal | Promise<string | number | bigint | boolean | ReactPortal | ReactElement<unknown, string | JSXElementConstructor<any>> | Iterable<ReactNode> | null | undefined> | null | undefined; date: string | number | Date; status: string; patientPhone: string | number | bigint | boolean | ReactElement<unknown, string | JSXElementConstructor<any>> | Iterable<ReactNode> | ReactPortal | Promise<string | number | bigint | boolean | ReactPortal | ReactElement<unknown, string | JSXElementConstructor<any>> | Iterable<ReactNode> | null | undefined> | null | undefined; }) => (
         <div key={appointment.id} className="border-b border-border pb-2 sm:pb-3 last:border-0">
           <div className="flex justify-between items-start gap-2">
             <div className="min-w-0">
@@ -81,7 +85,7 @@ async function TodaysAppointments() {
             </div>
             <div className="text-right shrink-0">
               <p className="font-medium text-xs sm:text-sm whitespace-nowrap text-foreground">
-                {new Date(appointment.date).toLocaleTimeString('fr-FR', { 
+                {new Date(appointment.date).toLocaleDateString('fr-FR', { 
                   hour: '2-digit', 
                   minute: '2-digit' 
                 })}
@@ -108,100 +112,130 @@ async function TodaysAppointments() {
   );
 }
 
-// 🧠 Composant principal
 export default async function DashboardHome() {
-    const { userId } = await auth();
-  
-    if (!userId) {
-      redirect('/sign-in');
-    }
-  
-    const stats = await getDashboardStats();
-  
-    return (
-        <Layout>
-          <div className="h-screen w-full overflow-y-auto bg-background">
-            <div className="p-4 sm:p-6">
-              <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Tableau de Bord</h1>
-              <p className="text-sm sm:text-base text-muted-foreground mt-1">
-                Bienvenue sur votre espace personnel
-              </p>
+  const { userId } = await auth();
+
+  if (!userId) {
+    redirect('/sign-in');
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { clerkUserId: userId },
+    include: {
+      clinic: {
+        include: {
+          subscription: true,
+        },
+      },
+    },
+  });
+
+  const clinic = user?.clinic;
+
+  // Vérifier que la clinique est active
+  if (!clinic || !clinic.isActive) {
+    redirect('/subscription');
+  }
+
+  // Vérifier que la clinique a une subscription active et non expirée
+  const now = new Date();
+  const subscription = clinic.subscription;
+
+  if (
+    !subscription ||
+    subscription.status !== "active" ||
+    !subscription.startDate ||
+    !subscription.endDate ||
+    subscription.endDate < now
+  ) {
+    redirect('/subscription');
+  }
+  const stats = await getDashboardStats();
+
+  return (
+    <Layout>
+      <div className="h-screen w-full overflow-y-auto bg-background">
+        <div className="p-4">
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Tableau de Bord</h1>
+          <p className="text-sm sm:text-base text-muted-foreground mt-1">
+            Bienvenue sur votre espace personnel
+          </p>
+        </div>
+
+        <div className="px-4">
+          <Suspense fallback={
+            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 animate-pulse">
+              {[...Array(4)].map((_, i) => (
+                <div key={i} className="bg-card/50 p-4 rounded-xl h-28 sm:h-32 flex items-center justify-center border border-border">
+                  <div className="h-6 w-6 bg-muted rounded-full"></div>
+                </div>
+              ))}
             </div>
-    
-            <div className="px-4 sm:px-6">
-              <Suspense fallback={
-                <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 animate-pulse">
-                  {[...Array(4)].map((_, i) => (
-                    <div key={i} className="bg-card/50 p-4 rounded-xl h-28 sm:h-32 flex items-center justify-center border border-border">
-                      <div className="h-6 w-6 bg-muted rounded-full"></div>
-                    </div>
-                  ))}
-                </div>
-              }>
-                <StatsWrapper />
-              </Suspense>
-        
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 sm:gap-6 pb-6">
-                <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
-                  <div className="p-4 sm:p-5 border-b border-border flex justify-between items-center">
-                    <h2 className="text-lg sm:text-xl font-semibold text-foreground">
-                      Rendez-vous aujourd'hui
-                    </h2>
-                    <Link 
-                      href="/appointments" 
-                      className="text-sm font-medium text-primary hover:text-primary/80 flex items-center gap-1"
-                    >
-                      Voir tout <FiChevronRight className="text-sm" />
-                    </Link>
+          }>
+            <StatsWrapper />
+          </Suspense>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 sm:gap-6 pb-6">
+            <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
+              <div className="p-4 sm:p-5 border-b border-border flex justify-between items-center">
+                <h2 className="text-lg sm:text-xl font-semibold text-foreground">
+                  Rendez-vous aujourd&apos;hui
+                </h2>
+                <Link 
+                  href="/appointments" 
+                  className="text-sm font-medium text-primary hover:text-primary/80 flex items-center gap-1"
+                >
+                  Voir tout <FiChevronRight className="text-sm" />
+                </Link>
+              </div>
+              <div className="p-4 sm:p-5">
+                <Suspense fallback={
+                  <div className="space-y-3">
+                    {[...Array(3)].map((_, i) => (
+                      <div key={i} className="h-16 bg-muted/50 rounded-lg animate-pulse"></div>
+                    ))}
                   </div>
-                  <div className="p-4 sm:p-5">
-                    <Suspense fallback={
-                      <div className="space-y-3">
-                        {[...Array(3)].map((_, i) => (
-                          <div key={i} className="h-16 bg-muted/50 rounded-lg animate-pulse"></div>
-                        ))}
-                      </div>
-                    }>
-                      <TodaysAppointments />
-                    </Suspense>
-                  </div>
-                </div>
-        
-                <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
-                  <div className="p-4 sm:p-5 border-b border-border">
-                    <h2 className="text-lg sm:text-xl font-semibold text-foreground">Actions Rapides</h2>
-                  </div>
-                  <div className="p-4 sm:p-5 grid grid-cols-2 gap-3 sm:gap-4">
-                    <QuickAction 
-                      icon={<FiPlusCircle className="text-blue-600 dark:text-blue-400" />} 
-                      title="Nouvelle Consultation" 
-                      href="/consultations/add" 
-                      color="blue"
-                    />
-                    <QuickAction 
-                      icon={<FiCalendar className="text-purple-600 dark:text-purple-400" />} 
-                      title="Nouveau RDV" 
-                      href="/appointments/add" 
-                      color="purple"
-                    />
-                    <QuickAction 
-                      icon={<FiDollarSign className="text-green-600 dark:text-green-400" />} 
-                      title="Paiement" 
-                      href="/payments" 
-                      color="green"
-                    />
-                    <QuickAction 
-                      icon={<FiPackage className="text-orange-600 dark:text-orange-400" />} 
-                      title="Produits" 
-                      href="/products" 
-                      color="orange"
-                      alert={stats.hasLowStockItems}
-                    />
-                  </div>
-                </div>
+                }>
+                  <TodaysAppointments />
+                </Suspense>
+              </div>
+            </div>
+
+            <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
+              <div className="p-4 sm:p-5 border-b border-border">
+                <h2 className="text-lg sm:text-xl font-semibold text-foreground">Actions Rapides</h2>
+              </div>
+              <div className="p-4 sm:p-5 grid grid-cols-2 gap-3 sm:gap-4">
+                <QuickAction 
+                  icon={<FiPlusCircle className="text-blue-600 dark:text-blue-400" />} 
+                  title="Nouvelle Consultation" 
+                  href="/consultations/add" 
+                  color="blue"
+                />
+                <QuickAction 
+                  icon={<FiCalendar className="text-purple-600 dark:text-purple-400" />} 
+                  title="Nouveau RDV" 
+                  href="/appointments/add" 
+                  color="purple"
+                />
+                <QuickAction 
+                  icon={<FiDollarSign className="text-green-600 dark:text-green-400" />} 
+                  title="Paiement" 
+                  href="/payments" 
+                  color="green"
+                />
+                <QuickAction 
+                  icon={<FiPackage className="text-orange-600 dark:text-orange-400" />} 
+                  title="Produits" 
+                  href="/products" 
+                  color="orange"
+                  alert={stats.hasLowStockItems}
+                />
               </div>
             </div>
           </div>
-      </Layout>
-    );
+        </div>
+      </div>
+    </Layout>
+  );
 }

@@ -7,11 +7,6 @@ export default async function SelectClinicPage() {
   const { userId } = await auth();
   if (!userId) redirect("/sign-in");
 
-  const user = await prisma.user.findUnique({
-    where: { clerkUserId: userId },
-    include: { clinic: true }
-  });
-
   const clinics = await prisma.clinic.findMany({ where: { isActive: true } });
 
   async function assignClinic(formData: FormData) {

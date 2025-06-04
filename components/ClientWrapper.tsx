@@ -7,7 +7,6 @@ import { useNavigation } from "./ui/NavigationContext";
 import LoadingSpinner from "./ui/LoadingSpinner";
 import { OfflineUI } from "./offline/OfflineUI";
 import { NetworkStatusBadge } from "./offline/NetworkStatusBadge";
-import { SyncIndicator } from "./SyncIndicator";
 
 type Clinic = {
   id: string;
@@ -51,7 +50,7 @@ export default function ClientWrapper({ children, clinic }: ClientWrapperProps) 
       {/* Composants Offline interactifs */}
       <OfflineUI onRetry={() => window.location.reload()} />
       <NetworkStatusBadge />
-      {clinic && <SyncIndicator clinicId={clinic.id} />}
+      {clinic?.name}
 
       <AnimatePresence mode="wait">
         {/* Overlay de chargement */}

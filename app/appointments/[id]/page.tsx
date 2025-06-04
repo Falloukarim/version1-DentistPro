@@ -1,5 +1,5 @@
 import { getAppointmentById } from '../action';
-import { FiCalendar, FiClock, FiUser, FiPhone, FiInfo, FiEdit, FiTrash2 } from 'react-icons/fi';
+import { FiCalendar, FiUser, FiPhone, FiInfo, FiEdit} from 'react-icons/fi';
 import Link from 'next/link';
 import DeleteButton from './DeleteButton';
 import { FiArrowLeft } from 'react-icons/fi';

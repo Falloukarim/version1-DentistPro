@@ -1,6 +1,5 @@
 'use client';
-
-import { FiUser, FiPhone, FiCalendar, FiMapPin, FiSave, FiX } from 'react-icons/fi';
+import { FiUser, FiPhone, FiCalendar, FiMapPin, FiSave, FiX, FiPrinter, FiDollarSign } from 'react-icons/fi';
 import Link from 'next/link';
 import { useActionState } from 'react';
 import { useFormStatus } from 'react-dom';
@@ -32,10 +31,14 @@ function SubmitButton() {
 export default function NewConsultationPage() {
   const [dentists, setDentists] = useState<Awaited<ReturnType<typeof getAvailableDentists>>>([]);
   const [state, formAction] = useActionState(addConsultation, null);
+  const [printUrl, setPrintUrl] = useState<string | null>(null);
+  const [isClient, setIsClient] = useState(false);
   const router = useRouter();
   const [phoneError, setPhoneError] = useState('');
+  const [consultationFee, setConsultationFee] = useState(3000);
 
   useEffect(() => {
+    setIsClient(true);
     const fetchDentists = async () => {
       try {
         const data = await getAvailableDentists();
@@ -48,11 +51,11 @@ export default function NewConsultationPage() {
   }, []);
 
   useEffect(() => {
-    if (state?.success) {
-      router.push('/consultations');
-      router.refresh();
+    if (state?.success && state.id && isClient) {
+      const currentUrl = `${window.location.protocol}//${window.location.host}/print/${state.id}`;
+      setPrintUrl(`rawbt:${currentUrl}`);
     }
-  }, [state, router]);
+  }, [state, isClient]);
 
   const validatePhone = (phone: string) => {
     const phoneRegex = /^(77|76|70|78|75)[0-9]{7}$/;
@@ -174,6 +177,26 @@ export default function NewConsultationPage() {
 
               <div className="space-y-2">
                 <label className="flex items-center text-sm font-medium text-foreground">
+                  <FiDollarSign className="mr-2 text-muted-foreground" />
+                  Montant consultation <span className="text-destructive ml-1">*</span>
+                </label>
+                <input
+                  type="number"
+                  name="consultationFee"
+                  min="0"
+                  step="500"
+                  required
+                  value={consultationFee}
+                  onChange={(e) => setConsultationFee(Number(e.target.value))}
+                  className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary bg-background"
+                />
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Montant standard: 3,000 FCFA
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <label className="flex items-center text-sm font-medium text-foreground">
                   Dentiste <span className="text-destructive ml-1">*</span>
                 </label>
                 <select
@@ -219,6 +242,42 @@ export default function NewConsultationPage() {
               <SubmitButton />
             </div>
           </form>
+          
+          {state?.success && isClient && (
+            <div className="mt-6 p-4 bg-success/10 rounded-lg border border-success/20">
+              <p className="text-success mb-4">Consultation enregistrée avec succès!</p>
+              
+              <div className="flex flex-wrap gap-3">
+                <Button asChild variant="outline">
+                  <Link href="/consultations">
+                    <FiX className="mr-2" />
+                    Retour aux consultations
+                  </Link>
+                </Button>
+
+                {printUrl && (
+                  <Button asChild>
+                    <a
+                      href={printUrl}
+                      className="flex items-center gap-2"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <FiPrinter className="mr-2" />
+                      Imprimer le ticket
+                    </a>
+                  </Button>
+                )}
+
+                <Button asChild variant="secondary">
+                  <Link href={`/print/${state.id}`} target="_blank">
+                    <FiPrinter className="mr-2" />
+                    Voir le ticket
+                  </Link>
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

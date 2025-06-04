@@ -1,187 +1,178 @@
 'use server';
 
-import { auth } from "@clerk/nextjs/server";
+import { auth, currentUser } from "@clerk/nextjs/server";
 import prisma from '@/lib/prisma';
+import { syncUserAction } from "./sync-user";
+import type { User, Clinic } from "@prisma/client";
 
-export async function createClinic(
-  name: string, 
-  address?: string,
-  phone?: string,
-  email?: string,
-  logoUrl?: string,
-  primaryColor?: string,
-  secondaryColor?: string
-) {
+// Type pour l'utilisateur avec sa clinique
+type UserWithClinic = User & {
+  clinic: Clinic | null;
+};
+
+// Type pour la condition WHERE des cliniques
+type ClinicWhereCondition = {
+  id?: string;
+  isActive: boolean;
+};
+
+// Type pour la condition WHERE des utilisateurs
+type UserWhereCondition = {
+  clinicId?: string;
+};
+
+async function getAuthenticatedUser(): Promise<UserWithClinic> {
   const { userId } = await auth();
   if (!userId) throw new Error("Non autorisé");
 
-  const user = await prisma.user.findUnique({
+  const clerkUser = await currentUser();
+  if (!clerkUser) throw new Error("Données utilisateur Clerk non disponibles");
+
+  let user = await prisma.user.findUnique({
     where: { clerkUserId: userId },
-    select: { role: true }
+    include: { clinic: true }
   });
 
-  if (user?.role !== 'SUPER_ADMIN') {
-    throw new Error("Seul un SUPER_ADMIN peut créer une clinique");
+  // Si l'utilisateur n'existe pas encore, essayer de le synchroniser
+  if (!user) {
+    const syncResult = await syncUserAction(userId, clerkUser);
+    if (!syncResult.success || !syncResult.user) {
+      throw new Error(`Échec de synchronisation: ${syncResult.message}`);
+    }
+    user = syncResult.user;
   }
 
-  return prisma.clinic.create({
-    data: {
-      name,
-      address: address ?? undefined,
-      phone: phone ?? undefined,
-      email: email ?? undefined,
-      logoUrl: logoUrl ?? undefined,
-      primaryColor: primaryColor ?? undefined,
-      secondaryColor: secondaryColor ?? undefined,
-      isActive: true
-    },
-    select: {
-      id: true,
-      name: true,
-      address: true,
-      phone: true,
-      email: true,
-      logoUrl: true,
-      primaryColor: true,
-      secondaryColor: true
-    }
-  });
+  if (!user) throw new Error("Utilisateur non trouvé après synchronisation");
+  return user;
 }
 
 export async function getClinics() {
-  const { userId } = await auth();
-  if (!userId) throw new Error("Non autorisé");
+  try {
+    const user = await getAuthenticatedUser();
 
-  const user = await prisma.user.findUnique({
-    where: { clerkUserId: userId },
-    select: { role: true, clinicId: true }
-  });
+    const where: ClinicWhereCondition = user.role === 'SUPER_ADMIN' 
+      ? { isActive: true }
+      : { 
+          id: user.clinicId || undefined,
+          isActive: true
+        };
 
-  if (!user) throw new Error("Utilisateur non trouvé");
-
-  const where = user.role === 'SUPER_ADMIN' 
-    ? { isActive: true }
-    : { id: user.clinicId, isActive: true };
-
-  return prisma.clinic.findMany({
-    where,
-    select: {
-      id: true,
-      name: true,
-      address: true,
-      phone: true,
-      email: true,
-      logoUrl: true,
-      primaryColor: true,
-      secondaryColor: true,
-      isActive: true
-    }
-  });
-}
-
-export async function assignUserToClinic(userId: string, clinicId: string) {
-  const { userId: currentUserId } = await auth();
-  if (!currentUserId) throw new Error("Non autorisé");
-
-  const currentUser = await prisma.user.findUnique({
-    where: { clerkUserId: currentUserId },
-    select: { role: true }
-  });
-
-  if (!currentUser || (currentUser.role !== 'SUPER_ADMIN' && currentUser.role !== 'ADMIN')) {
-    throw new Error("Autorisation insuffisante");
+    return await prisma.clinic.findMany({
+      where,
+      select: {
+        id: true,
+        name: true,
+        address: true,
+        phone: true,
+        email: true,
+        logoUrl: true,
+        primaryColor: true,
+        secondaryColor: true,
+        isActive: true
+      }
+    });
+  } catch (error) {
+    console.error("Erreur dans getClinics:", error);
+    throw new Error("Erreur lors de la récupération des cliniques");
   }
-
-  return prisma.user.update({
-    where: { id: userId },
-    data: { clinicId },
-    select: {
-      id: true,
-      firstName: true,
-      lastName: true,
-      email: true,
-      role: true,
-      clinicId: true
-    }
-  });
 }
 
 export async function getClinicUsers(clinicId?: string) {
-  const { userId } = await auth();
-  if (!userId) throw new Error("Non autorisé");
+  try {
+    const user = await getAuthenticatedUser();
 
-  const currentUser = await prisma.user.findUnique({
-    where: { clerkUserId: userId },
-    select: { role: true, clinicId: true }
-  });
+    const where: UserWhereCondition = {};
 
-  if (!currentUser) throw new Error("Utilisateur non trouvé");
-
-  const where: { clinicId?: string } = {};
-  
-  if (currentUser.role === 'SUPER_ADMIN') {
-    if (clinicId) where.clinicId = clinicId;
-  } else if (currentUser.clinicId) {
-    where.clinicId = currentUser.clinicId;
-  }
-
-  return prisma.user.findMany({
-    where,
-    select: {
-      id: true,
-      firstName: true,
-      lastName: true,
-      email: true,
-      role: true,
-      clinicId: true
+    if (user.role === 'SUPER_ADMIN') {
+      if (clinicId) where.clinicId = clinicId;
+    } else if (user.clinicId) {
+      where.clinicId = user.clinicId;
     }
-  });
+
+    return await prisma.user.findMany({
+      where,
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        role: true,
+        clinicId: true,
+        isActive: true
+      }
+    });
+  } catch (error) {
+    console.error("Erreur dans getClinicUsers:", error);
+    throw new Error("Erreur lors de la récupération des utilisateurs");
+  }
 }
 
 export async function deleteClinic(clinicId: string) {
-  const { userId } = await auth();
-  if (!userId) throw new Error("Non autorisé");
+  try {
+    const user = await getAuthenticatedUser();
 
-  const user = await prisma.user.findUnique({
-    where: { clerkUserId: userId },
-    select: { role: true }
-  });
+    if (user.role !== 'SUPER_ADMIN') {
+      throw new Error("Seul un SUPER_ADMIN peut supprimer une clinique");
+    }
 
-  if (user?.role !== 'SUPER_ADMIN') {
-    throw new Error("Seul un SUPER_ADMIN peut supprimer une clinique");
+    return await prisma.clinic.update({
+      where: { id: clinicId },
+      data: { isActive: false },
+      select: { id: true, name: true }
+    });
+  } catch (error) {
+    console.error("Erreur dans deleteClinic:", error);
+    throw error;
   }
-
-  // Désactiver plutôt que supprimer pour conserver l'historique
-  return prisma.clinic.update({
-    where: { id: clinicId },
-    data: { isActive: false },
-    select: { id: true, name: true }
-  });
 }
 
 export async function getClinicForUser(clerkUserId: string) {
-  const userWithClinic = await prisma.user.findUnique({
-    where: { clerkUserId },
-    include: {
-      clinic: {
-        select: {
-          id: true,
-          name: true,
-          address: true,
-          phone: true,
-          email: true,
-          logoUrl: true,
-          primaryColor: true,
-          secondaryColor: true,
-          isActive: true
+  try {
+    const clerkUser = await currentUser();
+    if (!clerkUser) throw new Error("Utilisateur Clerk non authentifié");
+
+    let userWithClinic = await prisma.user.findUnique({
+      where: { clerkUserId },
+      include: {
+        clinic: {
+          select: {
+            id: true,
+            name: true,
+            address: true,
+            phone: true,
+            email: true,
+            logoUrl: true,
+            primaryColor: true,
+            secondaryColor: true,
+            isActive: true
+          }
         }
       }
+    });
+
+    // Synchroniser si l'utilisateur n'existe pas
+    if (!userWithClinic) {
+      const syncResult = await syncUserAction(clerkUserId, clerkUser);
+      if (!syncResult.success || !syncResult.user) {
+        throw new Error(`Échec de synchronisation: ${syncResult.message}`);
+      }
+      userWithClinic = syncResult.user;
     }
-  });
 
-  if (!userWithClinic) {
-    throw new Error('User not found');
+    // Retourner la clinique ou une valeur par défaut
+    return userWithClinic?.clinic || {
+      id: 'default-clinic',
+      name: 'Clinique Principale',
+      address: '',
+      phone: '',
+      email: '',
+      logoUrl: '',
+      primaryColor: '#3b82f6',
+      secondaryColor: '#8b5cf6',
+      isActive: true
+    };
+  } catch (error) {
+    console.error("Erreur dans getClinicForUser:", error);
+    throw new Error("Erreur lors de la récupération de la clinique");
   }
-
-  return userWithClinic.clinic;
 }

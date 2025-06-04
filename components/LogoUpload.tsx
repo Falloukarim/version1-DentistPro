@@ -3,7 +3,7 @@
 import { useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { toast } from '@/hooks/use-toast';
+import { toast } from 'sonner'; // ← Import depuis sonner
 import { ImagePlus, Trash2, UploadCloud } from 'lucide-react';
 import Image from 'next/image';
 
@@ -27,19 +27,15 @@ export default function LogoUpload({
 
       // Validation du fichier
       if (!selectedFile.type.startsWith('image/')) {
-        toast({
-          title: 'Format invalide',
-          description: 'Veuillez sélectionner une image (JPEG, PNG, SVG)',
-          variant: 'destructive'
+        toast.error('Format invalide', {
+          description: 'Veuillez sélectionner une image (JPEG, PNG, SVG)'
         });
         return;
       }
 
       if (selectedFile.size > 2 * 1024 * 1024) {
-        toast({
-          title: 'Fichier trop volumineux',
-          description: 'La taille maximale est de 2MB',
-          variant: 'destructive'
+        toast.error('Fichier trop volumineux', {
+          description: 'La taille maximale est de 2MB'
         });
         return;
       }
@@ -72,15 +68,10 @@ export default function LogoUpload({
 
       const data = await response.json();
       onUploadSuccess(data.logoUrl);
-      toast({
-        title: 'Logo mis à jour',
-        description: 'Votre logo a été uploadé avec succès'
-      });
+      toast.success('Logo mis à jour');
     } catch (error) {
-      toast({
-        title: 'Erreur',
-        description: error instanceof Error ? error.message : "Échec de l'upload",
-        variant: 'destructive'
+      toast.error('Erreur', {
+        description: error instanceof Error ? error.message : "Échec de l'upload"
       });
     } finally {
       setIsLoading(false);
@@ -101,15 +92,10 @@ export default function LogoUpload({
       onUploadSuccess('');
       setPreview(null);
       setFile(null);
-      toast({
-        title: 'Logo supprimé',
-        description: 'Le logo a été supprimé avec succès'
-      });
-    } catch (error) {
-      toast({
-        title: 'Erreur',
-        description: "Échec de la suppression du logo",
-        variant: 'destructive'
+      toast.success('Logo supprimé');
+    } catch {
+      toast.error('Erreur', {
+        description: "Échec de la suppression du logo"
       });
     } finally {
       setIsLoading(false);

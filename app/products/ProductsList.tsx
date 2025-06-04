@@ -1,12 +1,27 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { FiPackage, FiDollarSign, FiTrendingUp, FiPlus, FiRefreshCw, FiShoppingCart } from 'react-icons/fi';
-import { addProduct, useProduct, restockProduct, fetchProducts } from './action';
-import type { Product } from './action';
-import ErrorAlert from '../../components/ErrorAlert';
-
+import { useState } from "react";
+import Link from 'next/link';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from "recharts";
+import { FiPlus, FiRefreshCw, FiShoppingCart } from "react-icons/fi";
+import { addProduct, restockProduct } from "./action";
+import type { Product } from "./action";
+import ErrorAlert from "../../components/ErrorAlert";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { FiArrowLeft } from "react-icons/fi";
 interface ProductsListProps {
   initialProducts: Product[] | null;
 }
@@ -14,46 +29,45 @@ interface ProductsListProps {
 export default function ProductsList({ initialProducts }: ProductsListProps) {
   const [products, setProducts] = useState<Product[]>(initialProducts || []);
   const [newProduct, setNewProduct] = useState({
-    name: '',
-    price: '',
-    stock: '',
-    description: ''
+    name: "",
+    price: "",
+    stock: "",
+    description: "",
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Calcul des statistiques
-  const totalValue = products.reduce((sum, product) => sum + (product.price * product.stock), 0);
-  
-  const mostUsed = products.reduce((max, product) => 
-    product.used > max.count ? { name: product.name, count: product.used } : max, 
-    { name: '', count: 0 }
+  const mostUsed = products.reduce(
+    (max, product) =>
+      product.used > max.count ? { name: product.name, count: product.used } : max,
+    { name: "Aucun produit", count: 0 }
   );
 
-  // Préparation des données pour le graphique
-  const chartData = products.map(product => ({
+  const chartData = products.map((product) => ({
     name: product.name,
     utilisé: product.used,
-    restant: product.stock - product.used
+    restant: product.stock - product.used,
   }));
 
   const clearError = () => setError(null);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
     const { name, value } = e.target;
-    setNewProduct({
-      ...newProduct,
-      [name]: value
-    });
+    setNewProduct((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
   };
 
   const handleAddProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    
+
     const tempId = `temp-${Date.now()}`;
     const initialStock = Number(newProduct.stock);
-    
+
     const tempProduct: Product = {
       id: tempId,
       name: newProduct.name,
@@ -61,36 +75,37 @@ export default function ProductsList({ initialProducts }: ProductsListProps) {
       price: Number(newProduct.price),
       stock: initialStock,
       used: 0,
-      disponible: initialStock, // Initialisation correcte
-      clinicId: 'temp-clinic-id',
+      disponible: initialStock,
+      clinicId: "temp-clinic-id",
       updatedAt: new Date(),
-      clinic: { name: 'Chargement...' }
+      clinic: { name: "Chargement..." },
     };
-    
-    setProducts(prev => [tempProduct, ...prev]);
-    setNewProduct({ name: '', price: '', stock: '', description: '' });
-  
+
+    setProducts((prev) => [tempProduct, ...prev]);
+    setNewProduct({ name: "", price: "", stock: "", description: "" });
+
     try {
       const createdProduct = await addProduct({
         name: tempProduct.name,
         price: tempProduct.price,
         stock: tempProduct.stock,
-        description: tempProduct.description || undefined
+        description: tempProduct.description || undefined,
       });
-      
-      // Vérification que le produit créé a bien disponible = stock
-      if (createdProduct.disponible !== createdProduct.stock) {
-        createdProduct.disponible = createdProduct.stock;
-      }
-      
-      setProducts(prev => [
-        createdProduct,
-        ...prev.filter(p => p.id !== tempId)
+
+      setProducts((prev) => [
+        { ...createdProduct, disponible: createdProduct.stock },
+        ...prev.filter((p) => p.id !== tempId),
       ]);
-      
+
+      toast.success("Produit ajouté", {
+        description: `${createdProduct.name} a été ajouté avec succès.`,
+      });
     } catch (err) {
-      setProducts(prev => prev.filter(p => p.id !== tempId));
+      setProducts((prev) => prev.filter((p) => p.id !== tempId));
       setError(err instanceof Error ? err.message : "Erreur lors de l'ajout du produit");
+      toast.error("Erreur", {
+        description: "Impossible d'ajouter le produit",
+      });
     } finally {
       setLoading(false);
     }
@@ -99,27 +114,32 @@ export default function ProductsList({ initialProducts }: ProductsListProps) {
   const handleUseProduct = async (productId: string) => {
     setLoading(true);
     try {
-      // Mise à jour optimiste
-      setProducts(prev => prev.map(p => 
-        p.id === productId ? { 
-          ...p, 
-          used: p.used + 1,
-          disponible: p.disponible - 1
-        } : p
-      ));
-
-      const updatedProduct = await useProduct(productId);
-      setProducts(prev => prev.map(p => p.id === productId ? updatedProduct : p));
+      const response = await fetch(`/api/products/use/${productId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Erreur lors de l'utilisation");
+      }
+  
+      const updatedProduct = await response.json();
+      
+      setProducts(prev =>
+        prev.map(p => (p.id === updatedProduct.id ? updatedProduct : p))
+      );
+      
+      toast.success("Produit utilisé", {
+        description: `${updatedProduct.name} a été utilisé. Stock restant: ${updatedProduct.disponible}`,
+      });
     } catch (err) {
-      // Annulation optimiste
-      setProducts(prev => prev.map(p => 
-        p.id === productId ? { 
-          ...p, 
-          used: p.used - 1,
-          disponible: p.disponible + 1
-        } : p
-      ));
-      setError(err instanceof Error ? err.message : "Erreur inconnue");
+      setError(err instanceof Error ? err.message : "Erreur lors de l'utilisation");
+      toast.error("Erreur", {
+        description: "Impossible d'utiliser le produit",
+      });
     } finally {
       setLoading(false);
     }
@@ -128,242 +148,193 @@ export default function ProductsList({ initialProducts }: ProductsListProps) {
   const handleRestockProduct = async (productId: string) => {
     setLoading(true);
     try {
-      // Mise à jour optimiste
-      setProducts(prev => prev.map(p => 
-        p.id === productId ? { 
-          ...p, 
-          stock: p.stock + 10,
-          disponible: p.disponible + 10
-        } : p
-      ));
-
       const updatedProduct = await restockProduct(productId);
-      setProducts(prev => prev.map(p => p.id === productId ? updatedProduct : p));
+      setProducts((prev) =>
+        prev.map((p) => (p.id === updatedProduct.id ? updatedProduct : p))
+      );
+      toast.success("Produit réapprovisionné", {
+        description: `${updatedProduct.name} a été réapprovisionné. Nouveau stock: ${updatedProduct.stock}`,
+      });
     } catch (err) {
-      // Annulation optimiste
-      setProducts(prev => prev.map(p => 
-        p.id === productId ? { 
-          ...p, 
-          stock: p.stock - 10,
-          disponible: p.disponible - 10
-        } : p
-      ));
-      setError(err instanceof Error ? err.message : "Erreur inconnue");
+      setError(err instanceof Error ? err.message : "Erreur lors du réapprovisionnement");
+      toast.error("Erreur", {
+        description: "Impossible de réapprovisionner le produit",
+      });
     } finally {
       setLoading(false);
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-      </div>
-    );
-  }
-
   return (
-    <div className="p-6 bg-background min-h-screen">
+    <main className="container mx-auto py-6 px-4">
+      <Link href="/dashboard" className="text-muted-foreground hover:text-primary">
+              <FiArrowLeft size={20} />
+      </Link>
+      <h1 className="text-3xl font-bold mb-6 text-primary">Gestion des produits</h1>
+
       {error && <ErrorAlert message={error} onClose={clearError} />}
 
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold text-gray-800 flex items-center gap-2">
-          <FiPackage className="text-blue-500" />
-          Gestion des Produits
-        </h1>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Formulaire d'ajout */}
+        <Card className="border-blue-200 bg-blue-50">
+          <CardHeader className="bg-blue-100 rounded-t-lg">
+            <CardTitle className="text-blue-800">Ajouter un produit</CardTitle>
+          </CardHeader>
+          <CardContent className="pt-6">
+            <form onSubmit={handleAddProduct} className="space-y-4">
+              <Input
+                type="text"
+                name="name"
+                placeholder="Nom du produit"
+                value={newProduct.name}
+                onChange={handleInputChange}
+                required
+                disabled={loading}
+                className="border-blue-300 focus:ring-blue-500 focus:border-blue-500"
+              />
+              <Input
+                type="number"
+                name="price"
+                placeholder="Prix (FCFA)"
+                value={newProduct.price}
+                onChange={handleInputChange}
+                required
+                disabled={loading}
+                min="0"
+                step="0.01"
+                className="border-blue-300 focus:ring-blue-500 focus:border-blue-500"
+              />
+              <Input
+                type="number"
+                name="stock"
+                placeholder="Quantité initiale"
+                value={newProduct.stock}
+                onChange={handleInputChange}
+                required
+                disabled={loading}
+                min="0"
+                className="border-blue-300 focus:ring-blue-500 focus:border-blue-500"
+              />
+              <Textarea
+                name="description"
+                placeholder="Description (optionnelle)"
+                value={newProduct.description}
+                onChange={handleInputChange}
+                disabled={loading}
+                rows={3}
+                className="border-blue-300 focus:ring-blue-500 focus:border-blue-500"
+              />
+              <Button 
+                type="submit" 
+                disabled={loading} 
+                className="w-full bg-blue-600 hover:bg-blue-700"
+              >
+                <FiPlus className="mr-2" /> Ajouter le produit
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+
+        {/* Statistiques */}
+        <Card className="border-purple-200 bg-purple-50">
+          <CardHeader className="bg-purple-100 rounded-t-lg">
+            <CardTitle className="text-purple-800">Statistiques</CardTitle>
+          </CardHeader>
+          <CardContent className="pt-6">
+            <div className="mb-6 p-4 bg-white rounded-lg shadow-sm border border-purple-100">
+              <p className="text-sm text-purple-600">Produit le plus utilisé</p>
+              <p className="text-xl font-semibold text-purple-900">
+                {mostUsed.name} <span className="text-purple-600">({mostUsed.count}x)</span>
+              </p>
+            </div>
+            
+            <div className="h-[300px] p-4 bg-white rounded-lg shadow-sm border border-purple-100">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e9d8fd" />
+                  <XAxis dataKey="name" stroke="#6b46c1" />
+                  <YAxis stroke="#6b46c1" />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: '#faf5ff',
+                      borderColor: '#9f7aea',
+                      borderRadius: '0.5rem'
+                    }} 
+                  />
+                  <Legend />
+                  <Bar dataKey="utilisé" fill="#9f7aea" name="Utilisé" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="restant" fill="#d6bcfa" name="Restant" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
-      <div className="grid grid-cols-1 bg-background md:grid-cols-3 gap-6 mb-8">
-        <div className="bg-background p-6 rounded-xl shadow-sm border border-gray-100">
-          <div className="flex items-center gap-3 mb-2">
-            <FiPackage className="text-gray-400" />
-            <h3 className="text-sm font-medium text-gray-500">Nombre de produits</h3>
-          </div>
-          <p className="text-2xl font-bold">{products.length}</p>
-        </div>
-        
-        <div className="bg-background p-6 rounded-xl shadow-sm border border-gray-100">
-          <div className="flex items-center gap-3 mb-2">
-            <FiTrendingUp className="text-gray-400" />
-            <h3 className="text-sm font-medium text-gray-500">Produit le plus utilisé</h3>
-          </div>
-          <p className="text-xl font-medium">
-            {mostUsed.name || 'Aucun'} 
-            <span className="text-blue-600 ml-2">({mostUsed.count})</span>
-          </p>
-        </div>
-      </div>
-
-      <div className="bg-background p-6 rounded-xl shadow-sm border border-gray-100 mb-8">
-        <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-          <FiPlus className="text-blue-500" />
-          Ajouter un produit
-        </h2>
-        <form onSubmit={handleAddProduct} className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="space-y-1">
-            <label className="block text-sm font-medium text-gray-700">Nom</label>
-            <input
-              type="text"
-              name="name"
-              value={newProduct.name}
-              onChange={handleInputChange}
-              className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-200 focus:border-blue-500 transition-all"
-              required
-            />
-          </div>
-          <div className="space-y-1">
-            <label className="block text-sm font-medium text-gray-700">Prix (FCFA)</label>
-            <input
-              type="number"
-              name="price"
-              value={newProduct.price}
-              onChange={handleInputChange}
-              className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-200 focus:border-blue-500 transition-all"
-              required
-              min="0"
-            />
-          </div>
-          <div className="space-y-1">
-            <label className="block text-sm font-medium text-gray-700">Stock initial</label>
-            <input
-              type="number"
-              name="stock"
-              value={newProduct.stock}
-              onChange={handleInputChange}
-              className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-200 focus:border-blue-500 transition-all"
-              required
-              min="0"
-            />
-          </div>
-          <div className="flex items-end">
-            <button 
-              type="submit" 
-              className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all shadow-md"
-              disabled={loading}
-            >
-              <FiPlus />
-              {loading ? 'Chargement...' : 'Ajouter'}
-            </button>
-          </div>
-        </form>
-      </div>
-
-      <div className="bg-background p-6 rounded-xl shadow-sm border border-gray-100 mb-8 h-96">
-        <h2 className="text-xl font-semibold mb-4">Utilisation des produits</h2>
-        <ResponsiveContainer width="100%" height="90%">
-          <BarChart data={chartData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
-            <XAxis dataKey="name" stroke="#888" />
-            <YAxis stroke="#888" />
-            <Tooltip 
-              contentStyle={{
-                background: '#fff',
-                border: '1px solid #eee',
-                borderRadius: '0.5rem',
-                boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-              }}
-            />
-            <Legend />
-            <Bar 
-              dataKey="utilisé" 
-              fill="#6366f1" 
-              name="Utilisé" 
-              radius={[4, 4, 0, 0]}
-            />
-            <Bar 
-              dataKey="restant" 
-              fill="#10b981" 
-              name="Restant" 
-              radius={[4, 4, 0, 0]}
-            />
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
-
-      <div className="bg-background rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="p-6 border-b border-gray-100">
-          <h2 className="text-xl font-semibold">Liste des produits</h2>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Produit</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Prix unitaire</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stock total</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Utilisé</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Disponible</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {products.map(product => {
-                const isTempProduct = product.id.startsWith('temp-');
-                
-                return (
-                  <tr key={product.id} className={`hover:bg-gray-50 transition-colors ${isTempProduct ? 'opacity-70' : ''}`}>
-                    {isTempProduct ? (
-                      <td colSpan={6} className="px-6 py-4 text-center">
-                        <div className="inline-flex items-center justify-center gap-2 text-sm text-gray-500">
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-400"></div>
-                          Ajout du produit en cours...
-                        </div>
+      {/* Liste des produits */}
+      <Card className="mt-6 border-green-200">
+        <CardHeader className="bg-green-100 rounded-t-lg">
+          <CardTitle className="text-green-800">Inventaire des produits</CardTitle>
+        </CardHeader>
+        <CardContent className="pt-6">
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-green-200">
+              <thead className="bg-green-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-green-800 uppercase tracking-wider">Nom</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-green-800 uppercase tracking-wider">Prix</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-green-800 uppercase tracking-wider">Stock</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-green-800 uppercase tracking-wider">Utilisé</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-green-800 uppercase tracking-wider">Disponible</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-green-800 uppercase tracking-wider">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-green-200">
+                {products.length > 0 ? (
+                  products.map((product) => (
+                    <tr key={product.id} className="hover:bg-green-50">
+                      <td className="px-6 py-4 whitespace-nowrap text-green-900 font-medium">{product.name}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-green-900">{product.price} FCFA</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-green-900">{product.stock}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-green-900">{product.used}</td>
+                      <td className={`px-6 py-4 whitespace-nowrap font-medium ${
+                        product.disponible < 5 ? 'text-red-600' : 'text-green-600'
+                      }`}>
+                        {product.disponible}
                       </td>
-                    ) : (
-                      <>
-                        <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900">
-                          {product.name}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-gray-500">
-                          {product.price.toLocaleString()} FCFA
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-gray-500">
-                          {product.stock}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-gray-500">
-                          {product.used}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            product.disponible < 3 ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'
-                          }`}>
-                            {product.disponible}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                          <div className="flex justify-end gap-2">
-                            <button 
-                              onClick={() => handleUseProduct(product.id)}
-                              className="flex items-center gap-1 bg-blue-50 hover:bg-blue-100 text-blue-600 px-3 py-1 rounded-md text-xs transition-colors"
-                              disabled={loading || isTempProduct}
-                            >
-                              <FiShoppingCart size={14} />
-                              Utiliser
-                            </button>
-                            <button 
-                              onClick={() => handleRestockProduct(product.id)}
-                              className="flex items-center gap-1 bg-green-50 hover:bg-green-100 text-green-600 px-3 py-1 rounded-md text-xs transition-colors"
-                              disabled={loading || isTempProduct}
-                            >
-                              <FiRefreshCw size={14} />
-                              +10
-                            </button>
-                          </div>
-                        </td>
-                      </>
-                    )}
+                      <td className="px-6 py-4 whitespace-nowrap space-x-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleUseProduct(product.id)}
+                          disabled={loading || product.disponible <= 0}
+                          className="border-green-600 text-green-600 hover:bg-green-600 hover:text-white"
+                        >
+                          <FiShoppingCart className="mr-2" /> Utiliser
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={() => handleRestockProduct(product.id)}
+                          disabled={loading}
+                          className="bg-green-600 hover:bg-green-700"
+                        >
+                          <FiRefreshCw className="mr-2" /> Réapprovisionner
+                        </Button>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={6} className="px-6 py-4 text-center text-green-600">
+                      Aucun produit disponible
+                    </td>
                   </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-        {products.length === 0 && (
-          <div className="text-center py-8 text-gray-500">
-            Aucun produit enregistré
+                )}
+              </tbody>
+            </table>
           </div>
-        )}
-      </div>
-    </div>
+        </CardContent>
+      </Card>
+    </main>
   );
 }

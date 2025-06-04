@@ -2,6 +2,7 @@ import { auth } from '@clerk/nextjs/server';
 import { redirect } from 'next/navigation';
 import prisma from '@/lib/prisma';
 import ClinicSettingsForm from 'components/ClinicSettingsForm';
+import { checkUserRole } from '@/lib/auth';
 
 export default async function ClinicSettingsPage({ 
   params 
@@ -11,6 +12,8 @@ export default async function ClinicSettingsPage({
   // On attend explicitement les params
   const resolvedParams = await params;
   const clinicId = resolvedParams.id;
+  const roleCheck = await checkUserRole(['ADMIN', 'SUPER_ADMIN']);
+  if (roleCheck !== true) return null;
 
   // Authentification Clerk
   const { userId } = await auth();

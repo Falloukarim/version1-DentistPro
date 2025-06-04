@@ -37,7 +37,7 @@ export interface Appointment {
     id: string;
     patientName: string;
     patientPhone: string;
-  };
+  }|null;
   dentist: {
     id: string;
     firstName: string;
@@ -72,7 +72,7 @@ export async function fetchConsultations() {
 
   const whereClause = user.role === 'SUPER_ADMIN' 
     ? {}
-    : { clinicId: user.clinicId };
+    : (user.clinicId ? { clinicId: user.clinicId } : {});
 
   return await prisma.consultation.findMany({
     where: {
@@ -83,16 +83,11 @@ export async function fetchConsultations() {
         { createdById: user.id }
       ]
     },
-    select: {
-      id: true,
-      patientName: true,
-      patientPhone: true,
-      createdAt: true,
-      dentistId: true
-    },
+    // On enlève le `select` pour récupérer tous les champs du modèle Consultation
     orderBy: { createdAt: 'desc' }
   });
 }
+
 
 // Ajouter un rendez-vous
 export async function addAppointment(formData: FormData) {
@@ -145,7 +140,7 @@ export async function fetchAppointments(): Promise<Appointment[]> {
 
   const whereClause = user.role === 'SUPER_ADMIN' 
     ? {}
-    : { clinicId: user.clinicId };
+    : (user.clinicId ? { clinicId: user.clinicId } : {});
 
   const appointments = await prisma.appointment.findMany({
     where: {
@@ -180,7 +175,7 @@ export async function updateAppointment(id: string, data: Partial<AppointmentInp
         { dentistId: user.id },
         { createdById: user.id }
       ],
-      clinicId: user.role !== 'SUPER_ADMIN' ? user.clinicId : undefined
+      clinicId: user.role !== 'SUPER_ADMIN' && user.clinicId ? user.clinicId : undefined
     },
     data: {
       ...data,
@@ -203,7 +198,7 @@ export async function getAppointmentById(id: string): Promise<Appointment> {
         { dentistId: user.id },
         { createdById: user.id }
       ],
-      clinicId: user.role !== 'SUPER_ADMIN' ? user.clinicId : undefined
+      clinicId: user.role !== 'SUPER_ADMIN' && user.clinicId ? user.clinicId : undefined
     },
     include: {
       consultation: { select: { id: true, patientName: true, patientPhone: true } },
@@ -232,7 +227,7 @@ export async function deleteAppointment(id: string) {
         { dentistId: user.id },
         { createdById: user.id }
       ],
-      clinicId: user.role !== 'SUPER_ADMIN' ? user.clinicId : undefined
+      clinicId: user.role !== 'SUPER_ADMIN' && user.clinicId ? user.clinicId : undefined
     }
   });
 
@@ -250,7 +245,7 @@ export async function deleteAllAppointments() {
         { dentistId: user.id },
         { createdById: user.id }
       ],
-      clinicId: user.role !== 'SUPER_ADMIN' ? user.clinicId : undefined
+      clinicId: user.role !== 'SUPER_ADMIN' && user.clinicId ? user.clinicId : undefined
     }
   });
 

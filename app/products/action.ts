@@ -5,6 +5,9 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import prisma from '@/lib/prisma';
 
+type TransactionFn = Parameters<typeof prisma.$transaction>[0];
+type PrismaTransaction = Parameters<TransactionFn>[0];
+
 export interface Product {
   id: string;
   name: string;
@@ -12,7 +15,7 @@ export interface Product {
   price: number;
   stock: number;
   used: number;
-  disponible : number;
+  disponible: number;
   clinicId: string;
   updatedAt: Date;
   clinic?: {
@@ -34,26 +37,25 @@ async function getCurrentUser() {
   if (!user.clinicId && user.role !== 'SUPER_ADMIN') {
     throw new Error('Aucune clinique assignée');
   }
-  return user;
+  
+  return {
+    ...user,
+    clinicId: user.clinicId ?? undefined // Convertit null en undefined
+  };
 }
 
 // Récupérer tous les produits
 export async function fetchProducts(): Promise<Product[]> {
   const user = await getCurrentUser();
 
-  const whereClause = user.role === 'SUPER_ADMIN' 
-    ? {}
-    : { clinicId: user.clinicId };
-
   return await prisma.product.findMany({
-    where: whereClause,
+    where: user.role === 'SUPER_ADMIN' ? {} : { clinicId: user.clinicId },
     include: {
       clinic: user.role === 'SUPER_ADMIN' ? { select: { name: true } } : false
     },
     orderBy: { updatedAt: 'desc' }
   });
 }
-
 // Ajouter un produit
 // Dans action.ts
 export async function addProduct(data: {
@@ -99,29 +101,26 @@ export async function addProduct(data: {
 export async function useProduct(productId: string): Promise<Product> {
   const user = await getCurrentUser();
 
-  return await prisma.$transaction(async (prisma) => {
-    // 1. Vérification du stock disponible
-    const product = await prisma.product.findUnique({
+  return await prisma.$transaction(async (tx: PrismaTransaction) => {
+    const product = await tx.product.findUnique({
       where: { 
         id: productId,
-        clinicId: user.clinicId 
+        clinicId: user.clinicId
       }
     });
+    
     if (!product) throw new Error('Produit non trouvé');
-    if (product.stock - product.used <= 0) throw new Error('Stock épuisé');
+    if (product.disponible <= 0) throw new Error('Stock épuisé');
 
-    // 2. Mise à jour atomique
-    const updatedProduct = await prisma.product.update({
+    return await tx.product.update({
       where: { id: productId },
       data: { 
         used: { increment: 1 },
-        disponible: { decrement: 1 }, // Maintient la cohérence
+        disponible: { decrement: 1 },
         updatedAt: new Date() 
       },
       include: { clinic: true }
     });
-
-    return updatedProduct;
   });
 }
 
@@ -139,6 +138,7 @@ export async function restockProduct(
     },
     data: { 
       stock: { increment: quantity },
+      disponible: { increment: quantity }, // Bonne pratique de maintenir dispo = stock - utilisé
       updatedAt: new Date()
     },
     include: {
@@ -147,8 +147,9 @@ export async function restockProduct(
   });
 
   revalidatePath('/products');
-  return updatedProduct; // Retourne le produit réapprovisionné
+  return updatedProduct; // <-- Le return était manquant ici
 }
+
 
 // Mettre à jour un produit
 export async function updateProduct(

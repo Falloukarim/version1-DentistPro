@@ -3,7 +3,6 @@
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useUser } from '@clerk/nextjs';
 import { 
   FiArrowLeft, 
   FiPlusCircle, 
@@ -17,7 +16,6 @@ import {
   FiPhone,
   FiCalendar,
   FiMapPin,
-  FiDollarSign,
   FiSearch
 } from 'react-icons/fi';
 import { deleteAllConsultations, updateConsultation } from './action';
@@ -29,8 +27,7 @@ interface ConsultationsListProps {
 
 export default function ConsultationsList({ consultations: initialConsultations }: ConsultationsListProps) {
   const router = useRouter();
-  const [loading, setLoading] = useState(false);
-  const { user: clerkUser, isLoaded } = useUser();
+  const [loading] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [editForm, setEditForm] = useState({
@@ -51,17 +48,17 @@ export default function ConsultationsList({ consultations: initialConsultations 
   }, [initialConsultations, searchTerm]);
 
   const getTotalCost = (consultation: Consultation) => {
-    const consultationCost = consultation.isPaid ? 3000 : 0;
-    const treatmentsCost = consultation.treatments.reduce(
-      (total, treatment) => total + treatment.amount, 0
+    return (consultation.treatments || []).reduce(
+      (total, treatment) => total + treatment.amount, 
+      0
     );
-    return consultationCost + treatmentsCost;
   };
   
   const getPaidAmount = (consultation: Consultation) => {
     const consultationPaid = consultation.isPaid ? 3000 : 0;
-    const treatmentsPaid = consultation.treatments.reduce(
-      (total, treatment) => total + treatment.paidAmount, 0
+    const treatmentsPaid = (consultation.treatments || []).reduce( // Ajout du fallback []
+      (total, treatment) => total + treatment.paidAmount, 
+      0
     );
     return consultationPaid + treatmentsPaid;
   };
@@ -193,9 +190,10 @@ export default function ConsultationsList({ consultations: initialConsultations 
           )}
         </div>
         {searchTerm && (
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            {filteredConsultations.length} résultat(s) trouvé(s) pour "{searchTerm}"
-          </p>
+           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+             {`${filteredConsultations.length} résultat(s) trouvé(s) pour "${searchTerm}"`}
+           </p>
+          
         )}
       </div>
       

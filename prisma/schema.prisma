@@ -13,15 +13,16 @@ model Clinic {
   address     String?
   phone       String?
   email       String?
-  logoUrl     String?        // Nouveau - URL du logo Cloudinary
-  primaryColor String?       @default("#3b82f6") // Nouveau - Couleur principale
-  secondaryColor String?     @default("#8b5cf6") // Nouveau - Couleur secondaire
-  customDashboardConfig Json? // Nouveau - Configuration personnalisée
+  logoUrl     String?        
+  primaryColor String?       @default("#3b82f6")
+  secondaryColor String?     @default("#8b5cf6")
+  customDashboardConfig Json?
+  consultationFee Float      @default(3000)
+  subscription Subscription?
   isActive    Boolean        @default(true)
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
 
-  // Relations
   users          User[]
   consultations  Consultation[]
   products       Product[]
@@ -32,6 +33,32 @@ model Clinic {
   @@map("clinics")
 }
 
+model Subscription {
+  id            String              @id @default(uuid())
+  clinic        Clinic              @relation(fields: [clinicId], references: [id])
+  clinicId      String              @unique
+  startDate     DateTime            @default(now())
+  endDate       DateTime
+  status        SubscriptionStatus  @default(pending)
+  paymentStatus SubscriptionPaymentStatus @default(PENDING)
+  reference     String?
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  @@map("subscriptions")
+}
+
+enum SubscriptionStatus {
+  pending
+  active
+  expired
+}
+
+enum SubscriptionPaymentStatus {
+  PENDING
+  PAYED  
+  FAILED
+}
 model User {
   id            String         @id @default(uuid())
   clerkUserId   String         @unique
@@ -47,21 +74,17 @@ model User {
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
   clinicId      String?
-  // Relations
-  clinic        Clinic?  @relation(fields: [clinicId], references: [id])
+  clinic        Clinic?        @relation(fields: [clinicId], references: [id])
 
-  // Relations de consultation
-  createdConsultations        Consultation[]    @relation("CreatedConsultations")
-  dentistConsultations        Consultation[]    @relation("DentistConsultations")
-  assistantConsultations      Consultation[]    @relation("AssistantConsultations")
+  createdConsultations        Consultation[] @relation("CreatedConsultations")
+  dentistConsultations        Consultation[] @relation("DentistConsultations")
+  assistantConsultations      Consultation[] @relation("AssistantConsultations")
 
-  // Relations de rendez-vous
-  dentistAppointments         Appointment[]     @relation("DentistAppointments")
-  createdAppointments         Appointment[]     @relation("CreatedAppointments")
+  dentistAppointments         Appointment[]  @relation("DentistAppointments")
+  createdAppointments         Appointment[]  @relation("CreatedAppointments")
 
-  // Relations financières
-  paymentsCreated             Payment[]         @relation("CreatedPayments")
-  products Product[]  // Relation inverse avec Product
+  paymentsCreated             Payment[]      @relation("CreatedPayments")
+  products                    Product[]
 
   @@index([clerkUserId, clinicId])
   @@map("users")
@@ -89,7 +112,6 @@ model Consultation {
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
 
-  // Relations
   clinic         Clinic        @relation(fields: [clinicId], references: [id])
   clinicId       String
 
@@ -100,7 +122,7 @@ model Consultation {
   dentistId      String?
 
   assistant      User?         @relation("AssistantConsultations", fields: [assistantId], references: [id])
-  assistantId    String?
+  assistantId    String
 
   treatments     Treatment[]
   payments       Payment[]
@@ -116,11 +138,10 @@ model Treatment {
   amount          Float
   paidAmount      Float         @default(0)
   remainingAmount Float         @default(0)
-  status          PaymentStatus @default(UNPAID)
+  status          TreatmentPaymentStatus @default(UNPAID)
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 
-  // Relations
   clinic          Clinic        @relation(fields: [clinicId], references: [id])
   clinicId        String
 
@@ -133,6 +154,12 @@ model Treatment {
   @@map("treatments")
 }
 
+enum TreatmentPaymentStatus {
+  UNPAID  @map("non payé")
+  PAID    @map("payé")
+  PARTIAL @map("partiel")
+}
+
 model Product {
   id          String    @id @default(uuid())
   name        String
@@ -140,14 +167,12 @@ model Product {
   price       Float     @default(0)
   stock       Int       @default(0)
   used        Int       @default(0)
-  disponible  Int      @default(0)  // Nouveau champ calculé
+  disponible  Int       @default(0)
   updatedAt   DateTime  @updatedAt
-  userId    String?
-  user      User?   @relation(fields: [userId], references: [id])
-
-  // Relations
-  clinic     Clinic    @relation(fields: [clinicId], references: [id])
-  clinicId   String
+  userId      String?
+  user        User?     @relation(fields: [userId], references: [id])
+  clinic      Clinic    @relation(fields: [clinicId], references: [id])
+  clinicId    String
 
   @@unique([name, clinicId])
   @@map("products")
@@ -162,12 +187,11 @@ model Appointment {
   status         AppointmentStatus @default(scheduled)
   createdAt      DateTime      @default(now())
 
-  // Relations
   clinic         Clinic        @relation(fields: [clinicId], references: [id])
   clinicId       String
 
   consultation   Consultation? @relation(fields: [consultationId], references: [id], onDelete: Cascade)
-  consultationId String?
+  consultationId String
 
   dentist        User          @relation("DentistAppointments", fields: [dentistId], references: [id])
   dentistId      String
@@ -188,7 +212,6 @@ model Payment {
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
-  // Relations
   clinic        Clinic        @relation(fields: [clinicId], references: [id])
   clinicId      String
 
@@ -202,12 +225,6 @@ model Payment {
   createdById   String
 
   @@map("payments")
-}
-
-enum PaymentStatus {
-  UNPAID  @map("non payé")
-  PAID    @map("payé")
-  PARTIAL @map("partiel")
 }
 
 enum AppointmentStatus {

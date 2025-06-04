@@ -2,7 +2,7 @@
 'use client';
 
 import { useState } from 'react';
-import { FiX, FiDollarSign, FiCreditCard, FiCheck } from 'react-icons/fi';
+import { FiX, FiDollarSign, FiCheck } from 'react-icons/fi';
 
 interface PaymentModalProps {
   type: 'consultation' | 'treatment';

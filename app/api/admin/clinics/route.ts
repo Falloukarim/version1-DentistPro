@@ -1,74 +1,75 @@
-// app/api/admin/clinics/route.ts
 import { NextResponse } from 'next/server';
-import { getAuth } from '@clerk/nextjs/server';
+import { auth } from '@clerk/nextjs/server';
 import prisma from '@/lib/prisma';
+import {
+  badRequestResponse,
+  forbiddenResponse,
+  unauthorizedResponse,
+  serverErrorResponse
+} from '@/lib/api-helpers';
 
 export async function POST(req: Request) {
   try {
-    const { userId } = getAuth(req as any);
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const { userId } = await auth();
+    if (!userId) return unauthorizedResponse();
 
-    const { name, address, phone, email } = await req.json();
+    const { name, address, phone, email }: {
+      name?: string;
+      address?: string;
+      phone?: string;
+      email?: string;
+    } = await req.json();
 
-    // Vérifier que l'utilisateur est admin
+    if (!name?.trim()) return badRequestResponse("Le nom de la clinique est requis");
+    if (!email?.trim()) return badRequestResponse("L'email est requis");
+
     const user = await prisma.user.findUnique({
       where: { clerkUserId: userId },
       select: { role: true }
     });
 
     if (!user || !['SUPER_ADMIN', 'ADMIN'].includes(user.role)) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      return forbiddenResponse();
     }
 
-    // Créer la clinique
     const newClinic = await prisma.clinic.create({
       data: {
-        name,
-        address,
-        phone,
-        email,
+        name: name.trim(),
+        address: address?.trim() || "",
+        phone: phone?.trim() || "",
+        email: email.trim(),
         isActive: true
       }
     });
 
-    return NextResponse.json(newClinic);
-  } catch (error) {
-    return NextResponse.json(
-      { error: 'Internal Server Error' },
-      { status: 500 }
-    );
+    return NextResponse.json(newClinic, { status: 201 });
+  } catch (error: unknown) {
+    console.error("Error in POST /admin/clinics:", error);
+    return serverErrorResponse(error);
   }
 }
 
-export async function GET(req: Request) {
-    try {
-      const { userId } = getAuth(req as any);
-      if (!userId) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-      }
-  
-      // Vérifier que l'utilisateur est admin
-      const user = await prisma.user.findUnique({
-        where: { clerkUserId: userId },
-        select: { role: true }
-      });
-  
-      if (!user || !['SUPER_ADMIN', 'ADMIN'].includes(user.role)) {
-        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-      }
-  
-      // Récupérer toutes les cliniques
-      const clinics = await prisma.clinic.findMany({
-        where: { isActive: true }
-      });
-  
-      return NextResponse.json(clinics);
-    } catch (error) {
-      return NextResponse.json(
-        { error: 'Internal Server Error' },
-        { status: 500 }
-      );
+export async function GET() {
+  try {
+    const { userId } = await auth();
+    if (!userId) return unauthorizedResponse();
+
+    const user = await prisma.user.findUnique({
+      where: { clerkUserId: userId },
+      select: { role: true }
+    });
+
+    if (!user || !['SUPER_ADMIN', 'ADMIN'].includes(user.role)) {
+      return forbiddenResponse();
     }
+
+    const clinics = await prisma.clinic.findMany({
+      where: { isActive: true }
+    });
+
+    return NextResponse.json(clinics, { status: 200 });
+  } catch (error: unknown) {
+    console.error("Error in GET /admin/clinics:", error);
+    return serverErrorResponse(error);
   }
+}

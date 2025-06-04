@@ -336,3 +336,17 @@ body {
   animation: shake 0.5s ease-in-out;
 }
 
+@media print {
+  body {
+    width: 80mm !important;
+    margin: 0 !important;
+    padding: 5mm !important;
+    font-size: 12pt !important;
+    background: white !important;
+    color: black !important;
+  }
+  
+  .no-print {
+    display: none !important;
+  }
+}
