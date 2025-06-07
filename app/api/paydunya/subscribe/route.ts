@@ -62,16 +62,17 @@ export async function POST() {
       },
     };
     const response = await axios.post(
-        "https://app.paydunya.com/sandbox-api/v1/checkout-invoice/create",
+        "https://app.paydunya.com/api/v1/checkout-invoice/create",
         invoiceData,
         {
-          headers: {
-            "Content-Type": "application/json",
-            "PAYDUNYA-MASTER-KEY": process.env.PAYDUNYA_MASTER_KEY!,
-            "PAYDUNYA-PRIVATE-KEY": process.env.PAYDUNYA_PRIVATE_KEY!,
-            "PAYDUNYA-TOKEN": process.env.PAYDUNYA_TOKEN!,
-            "PAYDUNYA-STORE-KEY": process.env.PAYDUNYA_STORE_KEY!,
-          },
+            headers: {
+                "Content-Type": "application/json",
+                "PAYDUNYA-MASTER-KEY": process.env.PAYDUNYA_MASTER_KEY!,
+                "PAYDUNYA-PRIVATE-KEY": process.env.PAYDUNYA_PRIVATE_KEY!,
+                "PAYDUNYA-TOKEN": process.env.PAYDUNYA_TOKEN!,
+                "PAYDUNYA-PUBLIC-KEY": process.env.PAYDUNYA_PUBLIC_KEY!,
+                "PAYDUNYA-STORE-KEY": process.env.PAYDUNYA_STORE_KEY!,
+              },
         }
       );
   

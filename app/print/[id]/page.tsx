@@ -49,12 +49,13 @@ ${consultation.description || ''}
       <div className="mt-8 text-center text-xs">Merci de votre visite</div>
 
       <div className="no-print mt-6 text-center">
-        <a
-          href={`rawbt:${process.env.NEXT_PUBLIC_APP_URL}/print/${params.id}`}
-          className="inline-block bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-        >
-          🖨️ Imprimer via RawBT
-        </a>
+      <a
+  href={`rawbt://${window.location.host}/print/${params.id}`}
+  className="inline-block bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+>
+  🖨️ Imprimer via RawBT
+</a>
+
       </div>
     </div>
   )
