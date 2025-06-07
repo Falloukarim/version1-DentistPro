@@ -52,7 +52,7 @@ export async function POST() {
 
     const headers = {
       "Content-Type": "application/json",
-      "PAYDUNYA-STORE-KEY": process.env.PAYDUNYA_STORE_KEY!,
+      "PAYDUNYA-MASTER-KEY": process.env.PAYDUNYA_STORE_KEY!,
       "PAYDUNYA-PRIVATE-KEY": process.env.PAYDUNYA_PRIVATE_KEY!,
       "PAYDUNYA-PUBLIC-KEY": process.env.PAYDUNYA_PUBLIC_KEY!,
       "PAYDUNYA-TOKEN": process.env.PAYDUNYA_TOKEN!,
