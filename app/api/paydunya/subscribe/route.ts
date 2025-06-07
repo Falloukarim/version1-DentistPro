@@ -49,12 +49,17 @@ export async function POST() {
         clinicId: user.clinic.id,
       },
     };
+    
+    console.log("Clés utilisées:", {
+        masterKey: !!process.env.PAYDUNYA_MASTER_KEY,
+        privateKey: !!process.env.PAYDUNYA_PRIVATE_KEY,
+        token: !!process.env.PAYDUNYA_TOKEN
+      });
 
     const headers = {
       "Content-Type": "application/json",
-      "PAYDUNYA-MASTER-KEY": process.env.PAYDUNYA_STORE_KEY!,
+      "PAYDUNYA-MASTER-KEY": process.env.PAYDUNYA_MASTER_KEY!, 
       "PAYDUNYA-PRIVATE-KEY": process.env.PAYDUNYA_PRIVATE_KEY!,
-      "PAYDUNYA-PUBLIC-KEY": process.env.PAYDUNYA_PUBLIC_KEY!,
       "PAYDUNYA-TOKEN": process.env.PAYDUNYA_TOKEN!,
     };
 
