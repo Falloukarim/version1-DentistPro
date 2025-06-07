@@ -5,23 +5,29 @@ import axios from "axios";
 
 export async function POST() {
   try {
+    console.log("[SUBSCRIBE] Début de la requête d'abonnement");
+
+    // Authentification
     const { userId } = await auth();
+    console.log("[SUBSCRIBE] UserID récupéré:", userId);
 
     if (!userId) {
-      console.error("Erreur d'authentification: userId manquant");
+      console.error("[SUBSCRIBE] Erreur d'authentification: userId manquant");
       return NextResponse.json(
         { error: "Authentification requise" }, 
         { status: 401 }
       );
     }
 
+    // Récupération de l'utilisateur et de la clinique
     const user = await prisma.user.findUnique({
       where: { clerkUserId: userId },
       include: { clinic: true },
     });
+    console.log("[SUBSCRIBE] Utilisateur trouvé:", user?.id);
 
     if (!user?.clinic) {
-      console.error("Clinique introuvable pour l'utilisateur:", userId);
+      console.error("[SUBSCRIBE] Clinique introuvable pour l'utilisateur:", userId);
       return NextResponse.json(
         { error: "Clinique introuvable" }, 
         { status: 404 }
@@ -29,7 +35,9 @@ export async function POST() {
     }
 
     const clinic = user.clinic;
+    console.log("[SUBSCRIBE] Clinique trouvée:", clinic.id, clinic.name);
 
+    // Construction des données de facturation
     const invoiceData = {
       invoice: {
         items: [
@@ -61,46 +69,67 @@ export async function POST() {
         clinicId: clinic.id,
       },
     };
+
+    console.log("[SUBSCRIBE] Données de facturation construites:", JSON.stringify(invoiceData, null, 2));
+
+    // Préparation des headers
+    const headers = {
+      "Content-Type": "application/json",
+      "PAYDUNYA-STORE-KEY": process.env.PAYDUNYA_STORE_KEY!,
+      "PAYDUNYA-PRIVATE-KEY": process.env.PAYDUNYA_PRIVATE_KEY!,
+      "PAYDUNYA-PUBLIC-KEY": process.env.PAYDUNYA_PUBLIC_KEY!,
+      "PAYDUNYA-TOKEN": process.env.PAYDUNYA_TOKEN!,
+    };
+
+    console.log("[SUBSCRIBE] En-têtes préparés:", JSON.stringify(headers, null, 2));
+    console.log("[SUBSCRIBE] Envoi de la requête à PayDunya...");
+
+    // Envoi de la requête à PayDunya
     const response = await axios.post(
-        "https://app.paydunya.com/api/v1/checkout-invoice/create",
-        invoiceData,
-        {
-            headers: {
-                "Content-Type": "application/json",
-                "PAYDUNYA-MASTER-KEY": process.env.PAYDUNYA_MASTER_KEY!,
-                "PAYDUNYA-PRIVATE-KEY": process.env.PAYDUNYA_PRIVATE_KEY!,
-                "PAYDUNYA-TOKEN": process.env.PAYDUNYA_TOKEN!,
-                "PAYDUNYA-PUBLIC-KEY": process.env.PAYDUNYA_PUBLIC_KEY!,
-                "PAYDUNYA-STORE-KEY": process.env.PAYDUNYA_STORE_KEY!,
-              },
-        }
-      );
-  
-      // Correction: PayDunya retourne l'URL dans response_text
-      const invoiceUrl = response.data.response_text;
-  
-      if (response.data.response_code === "00" && invoiceUrl) {
-        return NextResponse.json({ 
-          url: invoiceUrl,
-          token: response.data.token 
-        });
-      }
-  
-      throw new Error(response.data.response_text || "Erreur inconnue de PayDunya");
-      
-    } catch (error: any) {
-      console.error("Erreur complète:", {
-        message: error.message,
-        response: error.response?.data,
-        stack: error.stack
+      "https://app.paydunya.com/api/v1/checkout-invoice/create",
+      invoiceData,
+      { headers }
+    );
+
+    console.log("[SUBSCRIBE] Réponse de PayDunya:", JSON.stringify(response.data, null, 2));
+
+    // Vérification de la réponse
+    const invoiceUrl = response.data.response_text;
+
+    if (response.data.response_code === "00" && invoiceUrl) {
+      console.log("[SUBSCRIBE] Paiement créé avec succès. URL:", invoiceUrl);
+      return NextResponse.json({ 
+        url: invoiceUrl,
+        token: response.data.token 
       });
-      
-      return NextResponse.json(
-        { 
-          error: "Erreur lors de la création du paiement",
-          details: error.response?.data || error.message 
-        },
-        { status: 500 }
-      );
     }
+
+    console.error("[SUBSCRIBE] Erreur dans la réponse PayDunya:", response.data.response_text);
+    throw new Error(response.data.response_text || "Erreur inconnue de PayDunya");
+      
+  } catch (error: any) {
+    console.error("[SUBSCRIBE] Erreur complète:", {
+      message: error.message,
+      response: error.response?.data,
+      stack: error.stack,
+      config: {
+        url: error.config?.url,
+        method: error.config?.method,
+        headers: error.config?.headers,
+        data: error.config?.data,
+      }
+    });
+    
+    return NextResponse.json(
+      { 
+        error: "Erreur lors de la création du paiement",
+        details: error.response?.data || error.message,
+        config: {
+          url: error.config?.url,
+          method: error.config?.method,
+        }
+      },
+      { status: 500 }
+    );
   }
+}

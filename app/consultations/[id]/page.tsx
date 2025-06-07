@@ -288,19 +288,6 @@ export default async function ConsultationDetails({
             <span>Ajouter traitement</span>
           </Link>
         </div>
-
-        {/* Payment Section */}
-        {consultation.isPaid && (
-          <div className="mt-4 sm:mt-6 p-3 sm:p-4 bg-green-50 dark:bg-green-900/30 rounded-xl border border-green-100 dark:border-green-800/50">
-            <div className="flex items-center gap-2 sm:gap-3">
-              <FiCheckCircle className="text-green-600 dark:text-green-400 text-lg sm:text-xl" />
-              <div>
-                <h3 className="font-medium text-green-800 dark:text-green-200 text-sm sm:text-base">Consultation payée</h3>
-                <p className="text-xs sm:text-sm text-green-600 dark:text-green-300">Montant: 3,000 FCFA</p>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </Layout>
   );
