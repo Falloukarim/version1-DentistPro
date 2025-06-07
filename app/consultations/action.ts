@@ -317,12 +317,38 @@ function toUpdateData(data: Partial<ConsultationInput>): UpdateData {
       throw new Error('Échec de la mise à jour de la consultation');
     }
   }
-export async function getTreatmentById(id: string) {
+  export async function getTreatmentById(id: string) {
+    const { userId } = await auth();
+    if (!userId) throw new Error('Non autorisé');
+  
     return await prisma.treatment.findUnique({
-      where: { id }
+      where: { id },
+      include: {
+        consultation: {
+          select: {
+            patientName: true,
+            patientPhone: true,
+          },
+        },
+        clinic: {
+          select: {
+            name: true,
+          },
+        },
+        payments: {
+          select: {
+            id: true,
+            amount: true,
+            paymentMethod: true,
+            paymentDate: true,
+          },
+          orderBy: {
+            paymentDate: 'desc',
+          },
+        },
+      },
     });
   }
-  
   export async function addPayment(treatmentId: string, amount: number) {
     const treatment = await prisma.treatment.findUnique({
       where: { id: treatmentId }
@@ -348,44 +374,62 @@ export async function getTreatmentById(id: string) {
     });
   }
 
-  export async function addTreatment(
-    consultationId: string,
-    data: {
-      type: string;
-      amount: number;
-      paidAmount: number;
-      remainingAmount: number;
-      status: 'UNPAID' | 'PAID' | 'PARTIAL';
-    }
-  ) {
-    const { userId } = await auth();
-    if (!userId) throw new Error('Non autorisé');
+  export async function addTreatment(prevState: any, formData: FormData) {
+    try {
+      const data = {
+        consultationId: formData.get('consultationId') as string,
+        type: formData.get('type') as string,
+        amount: Number(formData.get('amount')),
+        paidAmount: Number(formData.get('paidAmount')) || 0,
+        status: formData.get('status') as 'UNPAID' | 'PAID' | 'PARTIAL'
+      };
   
-    const user = await prisma.user.findUnique({
-      where: { clerkUserId: userId },
-      include: { clinic: true }
-    });
+      // Validation des entrées
+      if (!data.consultationId) {
+        return { error: 'ID de consultation requis' };
+      }
+      if (!data.type) {
+        return { error: 'Type de traitement requis' };
+      }
+      if (isNaN(data.amount)) {
+        return { error: 'Montant invalide' };
+      }
+      if (isNaN(data.paidAmount)) {
+        return { error: 'Montant payé invalide' };
+      }
+      if (!['UNPAID', 'PAID', 'PARTIAL'].includes(data.status)) {
+        return { error: 'Statut de paiement invalide' };
+      }
   
-    if (!user) throw new Error('Utilisateur non trouvé');
-    if (!user.clinicId && user.role !== 'SUPER_ADMIN') {
-      throw new Error('Aucune clinique assignée');
-    }
+      const { userId } = await auth();
+      if (!userId) {
+        return { error: 'Non autorisé' };
+      }
   
-    await prisma.$transaction(async (prisma: { treatment: { create: (arg0: { data: { type: string; amount: number; paidAmount: number; remainingAmount: number; status: "UNPAID" | "PAID" | "PARTIAL"; consultation: { connect: { id: string; }; }; clinic: { connect: { id: any; }; }; }; }) => any; }; payment: { create: (arg0: { data: { amount: number; paymentMethod: string; paymentDate: Date; treatment: { connect: { id: any; }; }; createdBy: { connect: { id: any; }; }; clinic: { connect: { id: any; }; }; }; }) => any; }; }) => {
-      // 1. Créer le traitement
+      const user = await prisma.user.findUnique({
+        where: { clerkUserId: userId },
+        include: { clinic: true }
+      });
+  
+      if (!user) {
+        return { error: 'Utilisateur non trouvé' };
+      }
+      if (!user.clinicId && user.role !== 'SUPER_ADMIN') {
+        return { error: 'Aucune clinique assignée' };
+      }
+  
       const treatment = await prisma.treatment.create({
         data: {
           type: data.type,
           amount: data.amount,
           paidAmount: data.paidAmount,
-          remainingAmount: data.remainingAmount,
+          remainingAmount: data.amount - data.paidAmount,
           status: data.status,
-          consultation: { connect: { id: consultationId } },
+          consultation: { connect: { id: data.consultationId } },
           clinic: { connect: { id: user.clinicId! } }
         }
       });
   
-      // 2. Si un paiement est fait immédiatement
       if (data.paidAmount > 0) {
         await prisma.payment.create({
           data: {
@@ -398,10 +442,13 @@ export async function getTreatmentById(id: string) {
           }
         });
       }
-    });
   
-    revalidatePath(`/consultations/${consultationId}`);
-    redirect(`/consultations/${consultationId}`);
+      revalidatePath(`/consultations/${data.consultationId}`);
+      return { success: true, id: treatment.id };
+    } catch (error) {
+      console.error('Error creating treatment:', error);
+      return { error: 'Échec de la création du traitement' };
+    }
   }
 export async function getConsultationNotes(consultationId: string) {
     const { userId } = await auth();

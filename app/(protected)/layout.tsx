@@ -3,6 +3,7 @@ import { auth } from '@clerk/nextjs/server';
 import prisma from '@/lib/prisma';
 import Navbar from 'components/Navbar';
 import { redirect } from 'next/navigation';
+
 export default async function ProtectedLayout({
   children,
 }: {
@@ -12,7 +13,7 @@ export default async function ProtectedLayout({
   
   const user = userId ? await prisma.user.findUnique({
     where: { clerkUserId: userId },
-    select: { role: true },
+    select: { role: true, id: true },
   }) : null;
 
   if (!user) redirect('/sign-in');
@@ -20,18 +21,13 @@ export default async function ProtectedLayout({
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar 
-        onLogout={() => {
-          // Votre logique de déconnexion
-        }}
         userRole={user.role}
-        userId={user.id} // Passez d'autres props si nécessaire
+        userId={user.id}
       />
       
       <main className="flex-1 p-4 md:p-6">
         {children}
       </main>
-      
-      {/* Footer optionnel */}
     </div>
   );
 }

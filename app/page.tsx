@@ -13,7 +13,7 @@ export default function HomePage() {
         </div>
         <div className="max-w-4xl mx-auto text-center py-16 px-4">
           <h1 className="text-4xl font-bold text-blue-800 mb-6">
-            Bienvenue dans votre espace dentaire
+            Bienvenue dans votre espace santé
           </h1>
           <Button asChild className="bg-blue-600 hover:bg-blue-700 text-white">
             <Link href="/dashboard">
@@ -40,7 +40,7 @@ export default function HomePage() {
                 Cabinet Dentaire 
               </h1>
               <p className="text-gray-600 mt-2">
-                Des soins dentaires exceptionnels pour votre confort quotidien.
+                Des soins exceptionnels pour votre confort quotidien.
               </p>
             </div>
           </div>

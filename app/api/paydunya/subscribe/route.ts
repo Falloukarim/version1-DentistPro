@@ -54,7 +54,7 @@ export async function POST() {
       },
       actions: {
         cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard`,
-        return_url: `${process.env.NEXT_PUBLIC_APP_URL}/api/paydunya/verify`,
+        return_url: `${process.env.NEXT_PUBLIC_APP_URL}/paydunya/confirmed`,
         callback_url: `${process.env.NEXT_PUBLIC_APP_URL}/api/paydunya/webhook`,
       },
       custom_data: {

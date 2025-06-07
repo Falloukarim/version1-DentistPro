@@ -16,7 +16,8 @@ const nextConfig: NextConfig = {
       bodySizeLimit: '2mb',
     },
     optimizePackageImports: ['@clerk/nextjs'],
-    serverComponentsExternalPackages: ['@prisma/client', 'prisma'],
+    // Remplacez serverComponentsExternalPackages par serverExternalPackages
+    serverExternalPackages: ['@prisma/client', 'prisma'],
     allowedDevOrigins: ['be30-2001-4278-70-21e0-aca3-20c0-4321-13ac.ngrok-free.app']
   },
   images: {

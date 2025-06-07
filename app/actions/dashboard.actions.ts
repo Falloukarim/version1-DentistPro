@@ -143,6 +143,7 @@ interface DashboardStats {
   uniqueClients: number;
   todaysAppointments: number;
   totalRevenue: number;
+  todaysRevenue: number; 
   unpaidTreatments: number;
   lowStockProducts: Array<{
     id: string;
@@ -169,13 +170,19 @@ export async function getDashboardStats(): Promise<DashboardStats> {
   if (!user) throw new Error("Utilisateur non trouvé");
 
   try {
+    // Date du jour (début et fin)
+    const today = new Date();
+    const startOfDay = new Date(today.setHours(0, 0, 0, 0));
+    const endOfDay = new Date(today.setHours(23, 59, 59, 999));
+
     // Exécution en parallèle de toutes les requêtes
     const [
       uniquePatients,
       todaysAppointments,
       totalRevenue,
       unpaidTreatments,
-      lowStockProducts
+      lowStockProducts,
+      todaysPayments
     ] = await Promise.all([
       // 1. Patients uniques
       user.role === 'SUPER_ADMIN'
@@ -195,8 +202,8 @@ export async function getDashboardStats(): Promise<DashboardStats> {
           ...(user.role === 'DENTIST' ? { dentistId: user.id } : 
               user.role === 'ASSISTANT' ? { createdById: user.id } : {}),
           date: {
-            gte: new Date(new Date().setHours(0, 0, 0, 0)),
-            lte: new Date(new Date().setHours(23, 59, 59, 999))
+            gte: startOfDay,
+            lte: endOfDay
           }
         }
       }),
@@ -244,6 +251,20 @@ export async function getDashboardStats(): Promise<DashboardStats> {
           price: true
         },
         orderBy: { stock: 'asc' }
+      }),
+
+      // 6. Paiements du jour
+      prisma.payment.aggregate({
+        where: {
+          ...(user.role !== 'SUPER_ADMIN' && user.clinicId && { clinicId: user.clinicId }),
+          paymentDate: {
+            gte: startOfDay,
+            lte: endOfDay
+          }
+        },
+        _sum: {
+          amount: true
+        }
       })
     ]);
 
@@ -259,6 +280,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
       uniqueClients: Number(uniquePatients[0]?.count) || 0,
       todaysAppointments,
       totalRevenue: totalRevenue[0]?.sum || 0,
+      todaysRevenue: todaysPayments._sum?.amount || 0, // Nouvelle statistique
       unpaidTreatments,
       lowStockProducts: criticalProducts,
       lowStockCount: criticalProducts.length,

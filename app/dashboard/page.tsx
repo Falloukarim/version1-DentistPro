@@ -41,8 +41,8 @@ async function StatsWrapper() {
           href="/appointments"
         />
         <StatCard 
-          title="Revenus" 
-          value={`${stats.totalRevenue.toLocaleString()} FCFA`} 
+          title="Revenus du jour" 
+          value={`${stats.todaysRevenue.toLocaleString()} FCFA`} 
           icon={<FiDollarSign className="text-lg" />} 
           color="green" 
           href="/payments"
@@ -132,12 +132,10 @@ export default async function DashboardHome() {
 
   const clinic = user?.clinic;
 
-  // Vérifier que la clinique est active
   if (!clinic || !clinic.isActive) {
     redirect('/subscription');
   }
 
-  // Vérifier que la clinique a une subscription active et non expirée
   const now = new Date();
   const subscription = clinic.subscription;
 
@@ -150,92 +148,86 @@ export default async function DashboardHome() {
   ) {
     redirect('/subscription');
   }
-  const stats = await getDashboardStats();
 
   return (
-    <Layout>
-      <div className="h-screen w-full overflow-y-auto bg-background">
-        <div className="p-4">
-          <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Tableau de Bord</h1>
-          <p className="text-sm sm:text-base text-muted-foreground mt-1">
-            Bienvenue sur votre espace personnel
-          </p>
+    <div className="w-full p-4">
+      <div className="mb-6">
+        <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Tableau de Bord</h1>
+        <p className="text-sm sm:text-base text-muted-foreground mt-1">
+          Bienvenue sur votre espace personnel
+        </p>
+      </div>
+
+      <Suspense fallback={
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 animate-pulse">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="bg-card/50 p-4 rounded-xl h-28 sm:h-32 flex items-center justify-center border border-border">
+              <div className="h-6 w-6 bg-muted rounded-full"></div>
+            </div>
+          ))}
         </div>
+      }>
+        <StatsWrapper />
+      </Suspense>
 
-        <div className="px-4">
-          <Suspense fallback={
-            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 animate-pulse">
-              {[...Array(4)].map((_, i) => (
-                <div key={i} className="bg-card/50 p-4 rounded-xl h-28 sm:h-32 flex items-center justify-center border border-border">
-                  <div className="h-6 w-6 bg-muted rounded-full"></div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 sm:gap-6 pb-6">
+          <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
+            <div className="p-4 sm:p-5 border-b border-border flex justify-between items-center">
+              <h2 className="text-lg sm:text-xl font-semibold text-foreground">
+                Rendez-vous aujourd&apos;hui
+              </h2>
+              <Link 
+                href="/appointments" 
+                className="text-sm font-medium text-primary hover:text-primary/80 flex items-center gap-1"
+              >
+                Voir tout <FiChevronRight className="text-sm" />
+              </Link>
+            </div>
+            <div className="p-4 sm:p-5">
+              <Suspense fallback={
+                <div className="space-y-3">
+                  {[...Array(3)].map((_, i) => (
+                    <div key={i} className="h-16 bg-muted/50 rounded-lg animate-pulse"></div>
+                  ))}
                 </div>
-              ))}
+              }>
+                <TodaysAppointments />
+              </Suspense>
             </div>
-          }>
-            <StatsWrapper />
-          </Suspense>
+          </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 sm:gap-6 pb-6">
-            <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
-              <div className="p-4 sm:p-5 border-b border-border flex justify-between items-center">
-                <h2 className="text-lg sm:text-xl font-semibold text-foreground">
-                  Rendez-vous aujourd&apos;hui
-                </h2>
-                <Link 
-                  href="/appointments" 
-                  className="text-sm font-medium text-primary hover:text-primary/80 flex items-center gap-1"
-                >
-                  Voir tout <FiChevronRight className="text-sm" />
-                </Link>
-              </div>
-              <div className="p-4 sm:p-5">
-                <Suspense fallback={
-                  <div className="space-y-3">
-                    {[...Array(3)].map((_, i) => (
-                      <div key={i} className="h-16 bg-muted/50 rounded-lg animate-pulse"></div>
-                    ))}
-                  </div>
-                }>
-                  <TodaysAppointments />
-                </Suspense>
-              </div>
+          <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
+            <div className="p-4 sm:p-5 border-b border-border">
+              <h2 className="text-lg sm:text-xl font-semibold text-foreground">Actions Rapides</h2>
             </div>
-
-            <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
-              <div className="p-4 sm:p-5 border-b border-border">
-                <h2 className="text-lg sm:text-xl font-semibold text-foreground">Actions Rapides</h2>
-              </div>
-              <div className="p-4 sm:p-5 grid grid-cols-2 gap-3 sm:gap-4">
-                <QuickAction 
-                  icon={<FiPlusCircle className="text-blue-600 dark:text-blue-400" />} 
-                  title="Nouvelle Consultation" 
-                  href="/consultations/add" 
-                  color="blue"
-                />
-                <QuickAction 
-                  icon={<FiCalendar className="text-purple-600 dark:text-purple-400" />} 
-                  title="Nouveau RDV" 
-                  href="/appointments/add" 
-                  color="purple"
-                />
-                <QuickAction 
-                  icon={<FiDollarSign className="text-green-600 dark:text-green-400" />} 
-                  title="Paiement" 
-                  href="/payments" 
-                  color="green"
-                />
-                <QuickAction 
-                  icon={<FiPackage className="text-orange-600 dark:text-orange-400" />} 
-                  title="Produits" 
-                  href="/products" 
-                  color="orange"
-                  alert={stats.hasLowStockItems}
-                />
-              </div>
+            <div className="p-4 sm:p-5 grid grid-cols-2 gap-3 sm:gap-4">
+              <QuickAction 
+                icon={<FiPlusCircle className="text-blue-600 dark:text-blue-400" />} 
+                title="Nouvelle Consultation" 
+                href="/consultations/add" 
+                color="blue"
+              />
+              <QuickAction 
+                icon={<FiCalendar className="text-purple-600 dark:text-purple-400" />} 
+                title="Nouveau RDV" 
+                href="/appointments/add" 
+                color="purple"
+              />
+              <QuickAction 
+                icon={<FiDollarSign className="text-green-600 dark:text-green-400" />} 
+                title="Paiement" 
+                href="/payments" 
+                color="green"
+              />
+              <QuickAction 
+                icon={<FiPackage className="text-orange-600 dark:text-orange-400" />} 
+                title="Produits" 
+                href="/products" 
+                color="orange"
+              />
             </div>
           </div>
         </div>
       </div>
-    </Layout>
   );
 }

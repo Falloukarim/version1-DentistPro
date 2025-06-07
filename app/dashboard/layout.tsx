@@ -1,4 +1,3 @@
-// app/dashboard/layout.tsx
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
@@ -6,9 +5,10 @@ import LoadingSpinner from "../../components/ui/LoadingSpinner";
 import { syncUserAction } from "../../app/actions/sync-user";
 import { ClinicThemeProvider } from "components/ClinicThemeProvider";
 import ClinicLogo from "../../components/ClinicLogo";
+import Layout from "../../components/layout";
 
 export const metadata = {
-  title: "Tableau de bord - Moi",
+  title: "Tableau de bord",
   description: "Votre espace personnel sécurisé",
 };
 
@@ -29,7 +29,7 @@ export default async function DashboardLayout({
 
   if (!clerkUser) {
     console.warn("Clerk user non trouvé");
-    redirect("/sign-in"); // Ou autre gestion, selon besoin
+    redirect("/sign-in");
   } else {
     const syncResult = await syncUserAction(userId!, clerkUser);
     if (!syncResult.success) {
@@ -40,22 +40,16 @@ export default async function DashboardLayout({
 
   return (
     <ClinicThemeProvider clinic={clinic}>
-      <section className="min-h-screen bg-background">
-        {/* Header avec couleurs dynamiques */}
-        <header className="bg-primary text-primary-foreground shadow-sm">
-          <div className="px-4 py-4 flex items-center gap-4">
-            <ClinicLogo size={48} className="border-2 border-primary-foreground" />
-            <h1 className="text-xl font-semibold">{clinic?.name || "Tableau de bord"}</h1>
-          </div>
-        </header>
-
-        {/* Main content - full width */}
-        <main className="w-full">
-          <Suspense fallback={<LoadingSpinner size="lg" className="my-8" />}>
-            {children}
-          </Suspense>
-        </main>
-      </section>
+      <Layout>
+        <div className="flex flex-col h-full">
+          {/* Header intégré dans le Layout */}
+          <main className="flex-1 overflow-y-auto">
+            <Suspense fallback={<LoadingSpinner size="lg" className="my-8" />}>
+              {children}
+            </Suspense>
+          </main>
+        </div>
+      </Layout>
     </ClinicThemeProvider>
   );
 }

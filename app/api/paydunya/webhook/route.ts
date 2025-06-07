@@ -67,12 +67,6 @@ export async function POST(req: Request) {
       },
     });
 
-    // ✅ Mise à jour du champ isSubscribed de la clinique
-    await prisma.clinic.update({
-      where: { id: clinicId },
-      data: { isSubscribed: true },
-    });
-
     console.log("[Webhook] Abonnement enregistré et clinique mise à jour:", subscription);
     return NextResponse.json({ success: true }, { status: 200 });
 

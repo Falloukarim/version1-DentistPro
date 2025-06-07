@@ -45,14 +45,16 @@ const Layout = ({ children }: LayoutProps) => {
       )}
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col overflow-hidden w-full">
+      <div className="flex-1 flex flex-col overflow-hidden">
         {/* Navbar avec bouton menu pour mobile */}
         <Navbar 
           onLogout={handleLogout}
-          onMenuToggle={isMobile ? toggleSidebar : undefined} userRole={''}        />
+          onMenuToggle={isMobile ? toggleSidebar : undefined} 
+          userRole={''}
+        />
         
-        {/* Page Content - full width */}
-        <main className="flex-1 overflow-y-auto w-full">
+        {/* Page Content - utilise le défilement du parent */}
+        <main className="flex-1 overflow-hidden">
           {children}
         </main>
       </div>
