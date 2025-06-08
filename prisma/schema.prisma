@@ -211,7 +211,11 @@ model Payment {
   notes         String?
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
+  status        String        @default("PENDING") // AJOUT: PENDING/COMPLETED/FAILED
+  isTest        Boolean       @default(false)     // AJOUT: Pour marquer les paiements test
+  paydunyaToken String?                          // AJOUT: Token de transaction PayDunya
 
+  // Relations
   clinic        Clinic        @relation(fields: [clinicId], references: [id])
   clinicId      String
 

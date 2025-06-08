@@ -1,24 +1,12 @@
-import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
+import { clerkMiddleware } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 
-const isProtectedRoute = createRouteMatcher([
-  '/dashboard(.*)',
-  '/consultations(.*)',
-  '/appointments(.*)',
-  '/products(.*)',
-  '/payments(.*)',
-  '/admin(.*)',
-]);
-
 export default clerkMiddleware(async (auth, req) => {
-  if (!isProtectedRoute(req)) return NextResponse.next();
+  const { userId, sessionClaims } = await auth();
 
-  const { userId } = await auth();
-  if (!userId) {
-    return NextResponse.redirect(new URL('/sign-in', req.url));
-  }
+  // Debug: Affiche les claims de session
+  console.log('Session claims:', sessionClaims);
 
-  // Ne pas utiliser Prisma ici : la logique d'abonnement est déplacée dans la page elle-même
   return NextResponse.next();
 });
 
