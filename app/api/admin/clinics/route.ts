@@ -7,6 +7,7 @@ import {
   unauthorizedResponse,
   serverErrorResponse
 } from '@/lib/api-helpers';
+import { addDays } from 'date-fns'; 
 
 export async function POST(req: Request) {
   try {
@@ -38,8 +39,15 @@ export async function POST(req: Request) {
         address: address?.trim() || "",
         phone: phone?.trim() || "",
         email: email.trim(),
-        isActive: true
-      }
+        isActive: true,
+        subscription: {
+          create: {
+            status: "trial",
+            trialEndsAt: addDays(new Date(), 30),
+            endDate: addDays(new Date(), 30), // utile pour respecter le schéma existant
+          },
+        },
+      },
     });
 
     return NextResponse.json(newClinic, { status: 201 });

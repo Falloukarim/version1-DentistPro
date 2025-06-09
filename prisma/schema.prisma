@@ -39,6 +39,7 @@ model Subscription {
   clinicId      String              @unique
   startDate     DateTime            @default(now())
   endDate       DateTime
+  trialEndsAt   DateTime?           
   status        SubscriptionStatus  @default(pending)
   paymentStatus SubscriptionPaymentStatus @default(PENDING)
   reference     String?
@@ -48,10 +49,12 @@ model Subscription {
   @@map("subscriptions")
 }
 
+
 enum SubscriptionStatus {
   pending
   active
   expired
+  trial
 }
 
 enum SubscriptionPaymentStatus {

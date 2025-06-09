@@ -132,20 +132,13 @@ export default async function DashboardHome() {
 
   const clinic = user?.clinic;
 
-  if (!clinic || !clinic.isActive) {
-    redirect('/subscription');
-  }
-
   const now = new Date();
   const subscription = clinic.subscription;
-
-  if (
-    !subscription ||
-    subscription.status !== "active" ||
-    !subscription.startDate ||
-    !subscription.endDate ||
-    subscription.endDate < now
-  ) {
+  
+  const isTrial = subscription?.status === 'trial' && subscription.trialEndsAt && subscription.trialEndsAt > now;
+  const isActive = subscription?.status === 'active' && subscription.endDate && subscription.endDate > now;
+  
+  if (!subscription || (!isTrial && !isActive)) {
     redirect('/subscription');
   }
 
