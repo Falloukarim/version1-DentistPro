@@ -16,7 +16,6 @@ export async function POST(req: Request) {
       );
     }
 
-    console.log('[USER] Fetching user from database...');
     const user = await prisma.user.findUnique({
       where: { clerkUserId: userId },
       select: { 
@@ -28,19 +27,17 @@ export async function POST(req: Request) {
     });
 
     if (!user || !user.clinicId) {
-      console.error('[USER] User or clinic not found for clerkUserId:', userId);
+      console.error('[USER] User or clinic not found');
       return NextResponse.json(
         { error: 'Utilisateur non associé à une clinique' },
         { status: 403 }
       );
     }
 
-    const { amount, consultationId, treatmentId, notes } = await req.json();
-    console.log('[REQUEST] Received data:', { amount, consultationId, treatmentId, notes });
+    const { amount, consultationId, treatmentId, notes, paymentMethod } = await req.json();
+    console.log('[REQUEST] Received data:', { amount, consultationId, treatmentId, notes, paymentMethod });
 
-    // Validation
     if (!amount || amount <= 0) {
-      console.error('[VALIDATION] Invalid amount:', amount);
       return NextResponse.json(
         { error: 'Montant invalide' },
         { status: 400 }
@@ -61,6 +58,7 @@ export async function POST(req: Request) {
           total_price: Math.round(amount * 100),
           description: `Paiement initié par ${user.firstName} ${user.lastName}`
         }]
+        
       },
       store: {
         name: "Clinique Dentaire",
@@ -68,78 +66,91 @@ export async function POST(req: Request) {
       },
       payment_methods: {
         qr: true,
-        wave: true,
-        orange_money: true
+        wave: paymentMethod === 'wave',
+        orange_money: paymentMethod === 'orange_money'
       },
       actions: {
         callback_url: `${appBaseUrl}/api/payments/webhook`,
-        return_url: `${appBaseUrl}/dashboard/payments`,
-        cancel_url: `${appBaseUrl}/dashboard/payments`
-      },
+        return_url: `${appBaseUrl}/api/payments/success?token={TOKEN}`, 
+        cancel_url: `${appBaseUrl}/api/payments/failed?token={TOKEN}`
+    },
       custom_data: {
         clinicId: user.clinicId,
         consultationId,
         treatmentId,
         createdById: user.id,
-        isTest
+        isTest,
+        bypass_authentication: true, // Force le mode client
+        paymentMethod
       }
     };
 
-    console.log('[PAYDUNYA] Sending request to PayDunya with payload:', payload);
+    console.log('[PAYDUNYA] Sending request to PayDunya...');
     const response = await fetch(`${baseUrl}/checkout-invoice/create`, {
       method: 'POST',
       headers,
       body: JSON.stringify(payload)
     });
-
     const data = await response.json();
-    console.log('[PAYDUNYA] Received response:', data);
-
+    console.log('[PAYDUNYA] Response:', JSON.stringify(data, null, 2));
+    
     if (!response.ok) {
-      console.error('[PAYDUNYA] API Error:', data);
+        console.error('[PAYDUNYA] API Error:', data);
+        return NextResponse.json(
+          { error: data.message || 'Erreur PayDunya' },
+          { status: 400 }
+        );
+      }
+      
+    
+    const invoiceUrl = data.invoice_url || data.response_text;
+    if (!data.token || !invoiceUrl) {
+      console.error('[PAYDUNYA] Missing required fields in response');
       return NextResponse.json(
-        { error: data.message || 'Erreur PayDunya' },
-        { status: 400 }
+        { error: 'Réponse invalide du service de paiement' },
+        { status: 500 }
       );
     }
 
-    console.log('[DATABASE] Creating payment record...');
     const payment = await prisma.payment.create({
-      data: {
-        amount,
-        paymentMethod: 'MOBILE_MONEY',
-        paymentDate: new Date(),
-        status: 'PENDING',
+        data: {
+          amount,
+          paymentMethod: paymentMethod?.toUpperCase() || 'MOBILE_MONEY',
+          status: 'PENDING',
+          paydunyaToken: data.token, // Stockez le token ici
         isTest,
-        paydunyaToken: data.token,
         reference: data.token,
-        notes: notes || 'Paiement mobile money initié',
+        notes: notes || `Paiement ${paymentMethod} initié`,
         clinicId: user.clinicId,
         consultationId: consultationId || null,
         treatmentId: treatmentId || null,
-        createdById: user.id
+        createdById: user.id,
+        paymentDate: new Date() 
+
       }
     });
 
-    const responseData = {
-      success: true,
-      qr_code: data.response?.qr_code || null,
-      payment_url: data.response?.invoice_url || `${appBaseUrl}/dashboard/payments?token=${data.token}`,
-      token: data.token,
-      amount: amount,
-      payment_id: payment.id,
-      method: data.response?.payment_method || 'mobile_money'
-    };
-
-    console.log('[SUCCESS] Returning response:', responseData);
-    return NextResponse.json(responseData);
+    console.log('[SUCCESS] Final response:', {
+        payment_url: invoiceUrl,
+        token: data.token,
+        payment_id: payment.id
+      });
+    return NextResponse.json({
+        success: true,
+        qr_code: data.qr_code || null,
+        payment_url: data.invoice_url || data.response_text,
+        token: data.token,
+        amount: amount,
+        payment_id: payment.id,
+        method: paymentMethod || 'mobile_money'
+      });
 
   } catch (error: any) {
-    console.error('[ERROR] Full error:', error);
+    console.error('[ERROR]', error);
     return NextResponse.json(
       { 
         error: error.message || 'Erreur serveur',
-        stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+        ...(process.env.NODE_ENV === 'development' && { stack: error.stack })
       },
       { status: 500 }
     );

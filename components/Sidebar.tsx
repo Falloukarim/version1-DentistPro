@@ -53,13 +53,6 @@ const Sidebar = ({ onClose }: SidebarProps) => {
       icon: <FaBox />,
       color: "text-red-500",
       activeColor: "text-red-600"
-    },
-    { 
-      path: "/consultations/add", 
-      name: "Nouvelle Consultation", 
-      icon: <FaTooth />,
-      color: "text-teal-500",
-      activeColor: "text-teal-600"
     }
   ];
 

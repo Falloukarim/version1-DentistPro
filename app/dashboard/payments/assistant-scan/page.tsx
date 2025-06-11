@@ -6,7 +6,7 @@ import { Loader2, RefreshCw, CheckCircle, XCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 export default function AssistantScanPage() {
-  const { getToken, isLoaded } = useAuth();
+  const { getToken, isLoaded, userId } = useAuth();
   const [paymentData, setPaymentData] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -14,24 +14,28 @@ export default function AssistantScanPage() {
   const router = useRouter();
 
   useEffect(() => {
-    if (!isLoaded) return;
-    console.log('Authentication loaded, user ready');
-  }, [isLoaded]);
+    console.log('Payment data changed:', paymentData);
+  }, [paymentData]);
+
+  useEffect(() => {
+    console.log('Error changed:', error);
+  }, [error]);
 
   const startPayment = async (method: 'wave' | 'orange_money') => {
     try {
-      console.log(`Starting ${method} payment...`);
       setIsLoading(true);
       setError(null);
       setPaymentStatus('pending');
+      setPaymentData(null);
       
+      console.log(`Initiating ${method} payment...`);
       const token = await getToken();
-      if (!token) {
-        throw new Error('Token d\'authentification manquant');
+      
+      if (!token || !userId) {
+        throw new Error('Authentification requise');
       }
 
-      console.log('Sending request to API...');
-      const res = await fetch('/api/payments/generate-qr', {
+      const response = await fetch('/api/payments/generate-qr', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -39,33 +43,33 @@ export default function AssistantScanPage() {
         },
         body: JSON.stringify({
           amount: 5000,
-          notes: `Paiement via ${method.toUpperCase()}`,
-          paymentMethod: method
+          notes: `Paiement via ${method}`,
+          paymentMethod: method,
+          consultationId: null,
+          treatmentId: null
         })
       });
 
-      const data = await res.json();
-      console.log('API response:', data);
+      const data = await response.json();
+      console.log('Payment API response:', data);
 
-      if (!res.ok) {
-        throw new Error(data.error || 'Erreur lors de la génération du paiement');
+      if (!response.ok) {
+        throw new Error(data.error || 'Échec de la création du paiement');
       }
 
-      if (!data.qr_code && !data.payment_url) {
-        console.warn('No QR code or payment URL in response:', data);
-        throw new Error('Aucun moyen de paiement disponible dans la réponse');
+      if (!data.payment_url) {
+        throw new Error('URL de paiement non reçue');
       }
 
       setPaymentData(data);
       setPaymentStatus('pending');
       
-      // Start polling for payment status
       if (data.token) {
         pollPaymentStatus(data.token);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Payment error:', err);
-      setError(err instanceof Error ? err.message : 'Erreur inconnue');
+      setError(err.message || 'Erreur lors du paiement');
       setPaymentStatus('failed');
     } finally {
       setIsLoading(false);
@@ -73,14 +77,15 @@ export default function AssistantScanPage() {
   };
 
   const pollPaymentStatus = async (token: string) => {
-    try {
-      console.log('Starting payment status polling...');
-      let attempts = 0;
-      const maxAttempts = 30;
-      const interval = setInterval(async () => {
-        attempts++;
-        console.log(`Polling attempt ${attempts}`);
-        
+    console.log(`Starting polling for token: ${token}`);
+    let attempts = 0;
+    const maxAttempts = 30;
+    
+    const interval = setInterval(async () => {
+      attempts++;
+      console.log(`Polling attempt ${attempts}`);
+      
+      try {
         const res = await fetch(`/api/payments/status?token=${token}`);
         const data = await res.json();
 
@@ -88,20 +93,22 @@ export default function AssistantScanPage() {
           clearInterval(interval);
           setPaymentStatus('completed');
           console.log('Payment completed!');
-          setTimeout(() => {
-            router.push('/dashboard/payments');
-          }, 3000);
+          setTimeout(() => router.push('/dashboard/payments'), 2000);
         } else if (attempts >= maxAttempts) {
           clearInterval(interval);
           setPaymentStatus('failed');
+          setError('Délai dépassé - Paiement non confirmé');
           console.log('Polling timeout');
         }
-      }, 5000);
+      } catch (err) {
+        console.error('Polling error:', err);
+        clearInterval(interval);
+        setPaymentStatus('failed');
+        setError('Erreur de vérification du statut');
+      }
+    }, 5000);
 
-      return () => clearInterval(interval);
-    } catch (err) {
-      console.error('Polling error:', err);
-    }
+    return () => clearInterval(interval);
   };
 
   const renderPaymentStatus = () => {
@@ -117,7 +124,7 @@ export default function AssistantScanPage() {
         return (
           <div className="flex items-center gap-2 text-green-600">
             <CheckCircle className="h-5 w-5" />
-            <span>Paiement confirmé!</span>
+            <span>Paiement confirmé! Redirection en cours...</span>
           </div>
         );
       case 'failed':
@@ -176,13 +183,21 @@ export default function AssistantScanPage() {
           <div className="p-4 mb-6 bg-red-50 text-red-700 rounded-md border border-red-200">
             <p className="font-medium">Erreur :</p>
             <p>{error}</p>
+            {process.env.NODE_ENV === 'development' && (
+              <button 
+                onClick={() => setError(null)}
+                className="mt-2 text-sm text-blue-600 hover:underline"
+              >
+                Réessayer
+              </button>
+            )}
           </div>
         )}
 
         {renderPaymentStatus()}
 
         {paymentData && (
-          <div className="border rounded-lg p-6 bg-gray-50 mt-4">
+          <div className="border rounded-lg p-6 bg-gray-50 mt-4 animate-fade-in">
             <div className="flex flex-col md:flex-row gap-6 items-center">
               <div className="flex-1 flex flex-col items-center">
                 {paymentData.qr_code ? (
@@ -217,38 +232,26 @@ export default function AssistantScanPage() {
                   <div className="bg-white p-4 rounded-md border">
                     <p className="font-medium mb-2">Instructions :</p>
                     <ol className="list-decimal pl-5 space-y-1">
-                      <li>Ouvrez l'application mobile</li>
+                      <li>Ouvrez l'application {paymentData.method === 'wave' ? 'Wave' : 'Orange Money'}</li>
                       <li>Sélectionnez "Payer" ou "Scanner QR Code"</li>
                       <li>Autorisez le paiement lorsque demandé</li>
                     </ol>
                   </div>
 
-                  {paymentData.payment_url && (
-                    <div className="bg-white p-4 rounded-md border">
-                      <p className="font-medium mb-2">Lien alternatif :</p>
-                      <a 
-                        href={paymentData.payment_url} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="text-blue-600 hover:underline break-all text-sm"
-                      >
-                        {paymentData.payment_url}
-                      </a>
-                    </div>
-                  )}
+                  <div className="bg-white p-4 rounded-md border">
+                    <p className="font-medium mb-2">Lien de paiement :</p>
+                    <a 
+                      href={paymentData.payment_url} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:underline break-all text-sm"
+                    >
+                      {paymentData.payment_url}
+                    </a>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        )}
-
-        {/* Debug section (visible only in development) */}
-        {process.env.NODE_ENV === 'development' && paymentData && (
-          <div className="mt-6 p-4 bg-gray-100 rounded-md">
-            <h3 className="font-medium mb-2">Debug Info:</h3>
-            <pre className="text-xs overflow-x-auto">
-              {JSON.stringify(paymentData, null, 2)}
-            </pre>
           </div>
         )}
       </div>
