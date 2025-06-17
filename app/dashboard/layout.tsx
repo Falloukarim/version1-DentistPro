@@ -4,7 +4,6 @@ import { Suspense } from "react";
 import LoadingSpinner from "../../components/ui/LoadingSpinner";
 import { syncUserAction } from "../../app/actions/sync-user";
 import { ClinicThemeProvider } from "components/ClinicThemeProvider";
-import ClinicLogo from "../../components/ClinicLogo";
 import Layout from "../../components/layout";
 
 export const metadata = {

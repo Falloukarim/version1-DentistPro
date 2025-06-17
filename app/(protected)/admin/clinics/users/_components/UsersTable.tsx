@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { FiEdit, FiTrash2 } from 'react-icons/fi'
 
 interface User {
+  clinicId: any
   id: string
   clerkUserId: string
   firstName: string
@@ -108,7 +109,7 @@ export default function UsersTable() {
   <Button 
     variant="outline" 
     size="sm"
-    onClick={() => router.push(`/admin/clinics/users/${user.clerkUserId}`)}
+  onClick={() => router.push(`/protected/admin/clinics/${user.clinicId}`)}
   >
     <FiEdit className="mr-2" /> Modifier
   </Button>

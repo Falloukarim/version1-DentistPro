@@ -57,8 +57,12 @@ export async function POST(req: Request) {
           unit_price: Math.round(amount * 100),
           total_price: Math.round(amount * 100),
           description: `Paiement initié par ${user.firstName} ${user.lastName}`
-        }]
-        
+        }],
+        checkout: {
+            base_url: "https://checkout-paydunya.com/sandbox-checkout",
+            send_sms: false,
+            send_email: false
+          },
       },
       store: {
         name: "Clinique Dentaire",
@@ -70,17 +74,17 @@ export async function POST(req: Request) {
         orange_money: paymentMethod === 'orange_money'
       },
       actions: {
-        callback_url: `${appBaseUrl}/api/payments/webhook`,
-        return_url: `${appBaseUrl}/api/payments/success?token={TOKEN}`, 
-        cancel_url: `${appBaseUrl}/api/payments/failed?token={TOKEN}`
-    },
+        callback_url: `${process.env.NEXT_PUBLIC_APP_URL}/api/payments/webhook`,
+        return_url: `${process.env.NEXT_PUBLIC_APP_URL}/payment-success?token={TOKEN}`,
+        cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/payment-cancel`
+      },
       custom_data: {
         clinicId: user.clinicId,
         consultationId,
+        bypass_authentication: true,
         treatmentId,
         createdById: user.id,
         isTest,
-        bypass_authentication: true, // Force le mode client
         paymentMethod
       }
     };

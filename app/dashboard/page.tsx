@@ -10,7 +10,6 @@ import { auth } from "@clerk/nextjs/server";
 import { PrismaClient } from "@prisma/client";
 import { getDashboardStats, getTodaysAppointments } from "../actions/dashboard.actions";
 
-import Layout from "components/layout";
 import LowStockAlert from "components/LowStockAlert";
 import StatCard from "../../components/ui/StatCard";
 import QuickAction from "../../components/ui/QuickAction";

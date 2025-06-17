@@ -8,6 +8,7 @@ import { ThemeToggle } from "./ui/ThemeToggle";
 import { FiShield } from "react-icons/fi";
 import ClinicLogo from "./ClinicLogo";
 import { motion } from "framer-motion";
+import { useClinic } from "./ClinicThemeProvider";
 
 interface SidebarProps {
   onClose?: () => void;
@@ -16,7 +17,7 @@ interface SidebarProps {
 const Sidebar = ({ onClose }: SidebarProps) => {
   const pathname = usePathname();
   const { user, isLoaded } = useUser();
-
+  const { clinic } = useClinic(); // Utilisation du contexte Clinic
   // Icônes avec couleurs spécifiques
   const menuItems = [
     { 

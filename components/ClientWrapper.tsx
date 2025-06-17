@@ -50,7 +50,6 @@ export default function ClientWrapper({ children, clinic }: ClientWrapperProps) 
       {/* Composants Offline interactifs */}
       <OfflineUI onRetry={() => window.location.reload()} />
       <NetworkStatusBadge />
-      {clinic?.name}
 
       <AnimatePresence mode="wait">
         {/* Overlay de chargement */}
