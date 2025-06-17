@@ -1,0 +1,11 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/disableExpired",
+      "schedule": "0 0 * * *",
+      "headers": {
+        "Authorization": "Bearer KARIM@fallilou@2020"
+      }
+    }
+  ]
+}

@@ -2,12 +2,29 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 
 export async function GET(request: Request) {
-    // Vérification du header secret
-    const authHeader = request.headers.get('Authorization');
-    if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-      return new Response('Unauthorized', { status: 401 });
-    }
+  // Debug logging
+  console.log('Incoming headers:', Object.fromEntries(request.headers.entries()));
   
+  // Flexible header check
+  const authHeader = request.headers.get('Authorization')?.trim() 
+    || request.headers.get('authorization')?.trim();
+
+  if (!authHeader) {
+    console.error('Missing auth header');
+    return new Response('Authorization header required', { status: 401 });
+  }
+    const token = authHeader.startsWith('Bearer ') 
+    ? authHeader.slice(7).trim()
+    : authHeader.trim();
+
+  if (!process.env.CRON_SECRET) {
+    console.error('CRON_SECRET not configured');
+    return new Response('Server misconfigured', { status: 500 });
+  }
+    if (token !== process.env.CRON_SECRET.trim()) {
+    console.error(`Invalid token. Received: "${token}", Expected: "${process.env.CRON_SECRET}"`);
+    return new Response('Unauthorized', { status: 401 });
+  }
     // Votre logique existante
     const now = new Date();
     try {
