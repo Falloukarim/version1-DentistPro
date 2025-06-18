@@ -1,7 +1,7 @@
 {
-  "name": "Dentiste Pro",
-  "short_name": "DentistePro",
-  "description": "Application de gestion dentaire",
+  "name": "Klinika",
+  "short_name": "Klinia",
+  "description": "Application de gestion medicale",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
