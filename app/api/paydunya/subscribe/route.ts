@@ -25,11 +25,11 @@ export async function POST() {
         items: [{
           name: "Abonnement mensuel",
           quantity: 1,
-          unit_price: 5000,
-          total_price: 5000,
+          unit_price: 10000,
+          total_price: 10000,
           description: "Abonnement à l'application de gestion dentaire",
         }],
-        total_amount: 5000,
+        total_amount: 10000,
         description: "Paiement de l'abonnement mensuel",
       },
       store: {

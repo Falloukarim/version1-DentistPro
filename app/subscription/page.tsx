@@ -74,7 +74,7 @@ export default function SubscriptionPage() {
               </p>
             </div>
             <div className="text-right">
-              <p className="text-2xl font-bold text-gray-900">5,000 FCFA</p>
+              <p className="text-2xl font-bold text-gray-900">10,000 FCFA</p>
               <p className="text-gray-600 text-sm">/ mois</p>
             </div>
           </div>
