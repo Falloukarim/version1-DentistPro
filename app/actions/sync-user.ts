@@ -30,7 +30,7 @@ export async function syncUserAction(
     const email = clerkUser.emailAddresses?.[0]?.emailAddress;
     if (!email) return { success: false, message: "Email non trouvé" };
 
-    const isSuperAdmin = email === 'falliloukarim98@gmail.com' || email.endsWith('focusprojet7@gmail.com');
+    const isSuperAdmin = email === 'falliloukarim98@gmail.com';
     const role: Role = isSuperAdmin ? "SUPER_ADMIN" : "ASSISTANT";
 
     const existingUser = await prisma.user.findUnique({
@@ -72,12 +72,12 @@ export async function syncUserAction(
     let clinicId: string | null = null;
     if (!isSuperAdmin) {
       const existingClinic = await prisma.clinic.findFirst({ 
-        where: { name: "Clinique Principale" }
+        where: { name: "Clinique d'essai" }
       });
       clinicId = existingClinic?.id || (await prisma.clinic.create({
         data: {
-          name: "Clinique Principale",
-          address: "Adresse par défaut",
+          name: "Clinique d'essai",
+          address: "Adresse de test ",
           phone: "",
           isActive: true
         }

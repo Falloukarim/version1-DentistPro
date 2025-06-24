@@ -129,15 +129,18 @@ export default async function DashboardHome() {
     },
   });
 
-  const clinic = user?.clinic;
+  // Vérification plus robuste
+  if (!user?.clinic?.subscription) {
+    redirect('/subscription');
+  }
 
   const now = new Date();
-  const subscription = clinic.subscription;
+  const subscription = user.clinic.subscription;
   
   const isTrial = subscription?.status === 'trial' && subscription.trialEndsAt && subscription.trialEndsAt > now;
   const isActive = subscription?.status === 'active' && subscription.endDate && subscription.endDate > now;
   
-  if (!subscription || (!isTrial && !isActive)) {
+  if (!isTrial && !isActive) {
     redirect('/subscription');
   }
 
