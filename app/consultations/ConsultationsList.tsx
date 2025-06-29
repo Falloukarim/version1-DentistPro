@@ -16,7 +16,8 @@ import {
   FiPhone,
   FiCalendar,
   FiMapPin,
-  FiSearch
+  FiSearch,
+  FiDollarSign
 } from 'react-icons/fi';
 import { deleteAllConsultations, updateConsultation } from './action';
 import type { Consultation } from './action';
@@ -56,7 +57,7 @@ export default function ConsultationsList({ consultations: initialConsultations 
   
   const getPaidAmount = (consultation: Consultation) => {
     const consultationPaid = consultation.isPaid ? 3000 : 0;
-    const treatmentsPaid = (consultation.treatments || []).reduce( // Ajout du fallback []
+    const treatmentsPaid = (consultation.treatments || []).reduce(
       (total, treatment) => total + treatment.paidAmount, 
       0
     );
@@ -139,37 +140,12 @@ export default function ConsultationsList({ consultations: initialConsultations 
   }
 
   return (
-    <div className="p-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
-        <h2 className="text-3xl font-bold text-gray-800 dark:text-white">Consultations</h2>
-        <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
-          <Link
-            href="/dashboard"
-            className="flex items-center justify-center gap-2 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700 px-4 py-2 rounded-lg transition-all shadow-sm"
-          >
-            <FiArrowLeft className="text-lg" />
-            <span>Tableau de bord</span>
-          </Link>
-          <button
-            onClick={handleDeleteAll}
-            className="flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-800 text-white px-4 py-2 rounded-lg transition-all shadow-sm"
-          >
-            <FiTrash2 className="text-lg" />
-            <span>Supprimer tout</span>
-          </button>
-          <Link
-            href="/consultations/add"
-            className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800 text-white px-4 py-2 rounded-lg transition-all shadow-sm"
-          >
-            <FiPlusCircle className="text-lg" />
-            <span>Nouvelle Consultation</span>
-          </Link>
-        </div>
-      </div>
-
-      {/* Barre de recherche */}
-      <div className="mb-6">
-        <div className="relative max-w-md">
+    <div className="p-4 sm:p-6">
+      <div className="flex flex-col gap-4 mb-6">
+        <h2 className="text-2xl sm:text-3xl font-bold text-gray-800 dark:text-white">Consultations</h2>
+        
+        {/* Barre de recherche */}
+        <div className="relative max-w-full">
           <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
             <FiSearch className="text-gray-400 dark:text-gray-500" />
           </div>
@@ -190,200 +166,228 @@ export default function ConsultationsList({ consultations: initialConsultations 
           )}
         </div>
         {searchTerm && (
-           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-             {`${filteredConsultations.length} résultat(s) trouvé(s) pour "${searchTerm}"`}
-           </p>
-          
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            {`${filteredConsultations.length} résultat(s) trouvé(s) pour "${searchTerm}"`}
+          </p>
         )}
       </div>
-      
-      <div className="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50 dark:bg-gray-800">
-              <tr>
-                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Patient</th>
-                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Téléphone</th>
-                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Date</th>
-                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Adresse</th>
-                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Coût Total</th>
-                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Statut</th>
-                <th className="px-6 py-4 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-              {filteredConsultations.map(consultation => {
-                const isEditing = editingId === consultation.id;
-                const totalCost = getTotalCost(consultation);
-                const paidAmount = getPaidAmount(consultation);
-                const globalStatus = getGlobalStatus(consultation);
-                
-                return (
-                  <tr key={consultation.id} className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-                    {isEditing ? (
-                      <td className="px-6 py-4" colSpan={7}>
-                        <form onSubmit={handleSubmit} className="space-y-4">
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                <FiUser className="inline mr-2" /> Nom patient
-                              </label>
-                              <input
-                                type="text"
-                                name="patientName"
-                                value={editForm.patientName}
-                                onChange={handleEditChange}
-                                className="w-full p-2 border border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-800 dark:text-white"
-                                required
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                <FiPhone className="inline mr-2" /> Téléphone
-                              </label>
-                              <input
-                                type="text"
-                                name="patientPhone"
-                                value={editForm.patientPhone}
-                                onChange={handleEditChange}
-                                className="w-full p-2 border border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-800 dark:text-white"
-                                required
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                <FiCalendar className="inline mr-2" /> Date
-                              </label>
-                              <input
-                                type="date"
-                                name="date"
-                                value={editForm.date}
-                                onChange={handleEditChange}
-                                className="w-full p-2 border border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-800 dark:text-white"
-                                required
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                <FiMapPin className="inline mr-2" /> Adresse
-                              </label>
-                              <input
-                                type="text"
-                                name="patientAddress"
-                                value={editForm.patientAddress}
-                                onChange={handleEditChange}
-                                className="w-full p-2 border border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-800 dark:text-white"
-                              />
-                            </div>
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                              Description
-                            </label>
-                            <textarea
-                              name="description"
-                              value={editForm.description}
-                              onChange={handleEditChange}
-                              className="w-full p-2 border border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-800 dark:text-white"
-                              rows={2}
-                            />
-                          </div>
-                          <div className="flex justify-end gap-2">
-                            <button
-                              type="button"
-                              onClick={cancelEdit}
-                              className="flex items-center gap-1 px-3 py-1 border border-gray-300 dark:border-gray-700 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
-                            >
-                              <FiX /> Annuler
-                            </button>
-                            <button
-                              type="submit"
-                              className="flex items-center gap-1 px-3 py-1 bg-blue-600 dark:bg-blue-700 text-white rounded-md hover:bg-blue-700 dark:hover:bg-blue-800"
-                            >
-                              <FiSave /> Enregistrer
-                            </button>
-                          </div>
-                        </form>
-                      </td>
-                    ) : (
-                      <>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
+
+      {/* Boutons d'action */}
+      <div className="flex flex-col sm:flex-row gap-3 mb-6">
+        <Link
+          href="/dashboard"
+          className="flex items-center justify-center gap-2 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700 px-4 py-2 rounded-lg transition-all shadow-sm"
+        >
+          <FiArrowLeft className="text-lg" />
+          <span>Tableau de bord</span>
+        </Link>
+        <button
+          onClick={handleDeleteAll}
+          className="flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-800 text-white px-4 py-2 rounded-lg transition-all shadow-sm"
+        >
+          <FiTrash2 className="text-lg" />
+          <span>Supprimer tout</span>
+        </button>
+        <Link
+          href="/consultations/add"
+          className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800 text-white px-4 py-2 rounded-lg transition-all shadow-sm"
+        >
+          <FiPlusCircle className="text-lg" />
+          <span>Nouvelle Consultation</span>
+        </Link>
+      </div>
+
+      {/* Liste des consultations */}
+      <div className="space-y-4">
+        {filteredConsultations.length === 0 ? (
+          <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+            {searchTerm ? 
+              `Aucune consultation trouvée pour "${searchTerm}"` : 
+              'Aucune consultation enregistrée'}
+          </div>
+        ) : (
+          filteredConsultations.map(consultation => {
+            const isEditing = editingId === consultation.id;
+            const totalCost = getTotalCost(consultation);
+            const paidAmount = getPaidAmount(consultation);
+            const globalStatus = getGlobalStatus(consultation);
+            
+            return (
+              <div key={consultation.id} className="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 p-4">
+                {isEditing ? (
+                  <form onSubmit={handleSubmit} className="space-y-4">
+                    <div className="grid grid-cols-1 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          <FiUser className="inline mr-2" /> Nom patient
+                        </label>
+                        <input
+                          type="text"
+                          name="patientName"
+                          value={editForm.patientName}
+                          onChange={handleEditChange}
+                          className="w-full p-2 border border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-800 dark:text-white"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          <FiPhone className="inline mr-2" /> Téléphone
+                        </label>
+                        <input
+                          type="text"
+                          name="patientPhone"
+                          value={editForm.patientPhone}
+                          onChange={handleEditChange}
+                          className="w-full p-2 border border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-800 dark:text-white"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          <FiCalendar className="inline mr-2" /> Date
+                        </label>
+                        <input
+                          type="date"
+                          name="date"
+                          value={editForm.date}
+                          onChange={handleEditChange}
+                          className="w-full p-2 border border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-800 dark:text-white"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          <FiMapPin className="inline mr-2" /> Adresse
+                        </label>
+                        <input
+                          type="text"
+                          name="patientAddress"
+                          value={editForm.patientAddress}
+                          onChange={handleEditChange}
+                          className="w-full p-2 border border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-800 dark:text-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          Description
+                        </label>
+                        <textarea
+                          name="description"
+                          value={editForm.description}
+                          onChange={handleEditChange}
+                          className="w-full p-2 border border-gray-300 dark:border-gray-700 rounded-md dark:bg-gray-800 dark:text-white"
+                          rows={2}
+                        />
+                      </div>
+                    </div>
+                    <div className="flex justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={cancelEdit}
+                        className="flex items-center gap-1 px-3 py-1 border border-gray-300 dark:border-gray-700 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                      >
+                        <FiX /> Annuler
+                      </button>
+                      <button
+                        type="submit"
+                        className="flex items-center gap-1 px-3 py-1 bg-blue-600 dark:bg-blue-700 text-white rounded-md hover:bg-blue-700 dark:hover:bg-blue-800"
+                      >
+                        <FiSave /> Enregistrer
+                      </button>
+                    </div>
+                  </form>
+                ) : (
+                  <>
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center gap-2">
+                        <FiUser className="text-gray-500 dark:text-gray-400" />
+                        <h3 className="font-medium text-gray-900 dark:text-white">
                           {consultation.patientName}
                           {consultation.patientAge && (
                             <span className="text-gray-500 dark:text-gray-400 ml-2">({consultation.patientAge} ans)</span>
                           )}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                          {consultation.patientPhone}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                          {consultation.date.toLocaleDateString()}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                          {consultation.patientAddress || '-'}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
+                        </h3>
+                      </div>
+                      
+                      <div className="flex items-center gap-2">
+                        <FiPhone className="text-gray-500 dark:text-gray-400" />
+                        <span className="text-gray-700 dark:text-gray-300">{consultation.patientPhone}</span>
+                      </div>
+                      
+                      <div className="flex items-center gap-2">
+                        <FiCalendar className="text-gray-500 dark:text-gray-400" />
+                        <span className="text-gray-700 dark:text-gray-300">
+                          {consultation.date.toLocaleDateString('fr-FR', {
+                            weekday: 'long',
+                            day: 'numeric',
+                            month: 'long',
+                            year: 'numeric'
+                          })}
+                        </span>
+                      </div>
+                      
+                      <div className="flex items-start gap-2">
+                        <FiMapPin className="mt-0.5 text-gray-500 dark:text-gray-400" />
+                        <span className="text-gray-700 dark:text-gray-300">
+                          {consultation.patientAddress || 'Non renseignée'}
+                        </span>
+                      </div>
+                      
+                      <div className="flex items-center gap-2">
+                        <FiDollarSign className="text-gray-500 dark:text-gray-400" />
+                        <span className="font-medium text-gray-900 dark:text-white">
                           {totalCost.toLocaleString()} FCFA
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex flex-col gap-1">
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                              globalStatus === 'PAID' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' :
-                              globalStatus === 'PARTIAL' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300' : 
-                              'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300'
-                            }`}>
-                              {globalStatus === 'PAID' ? 'Payé' : 
-                               globalStatus === 'PARTIAL' ? 'Partiel' : 'Non payé'}
-                            </span>
-                            {globalStatus === 'PARTIAL' && (
-                              <span className="text-xs text-gray-500 dark:text-gray-400">
-                                Payé: {paidAmount.toLocaleString()} FCFA / {totalCost.toLocaleString()} FCFA
-                              </span>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                          <div className="flex justify-end gap-2">
-                            <button
-                              onClick={() => startEditing(consultation)}
-                              className="flex items-center gap-1 bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 px-3 py-1 rounded-md text-xs transition-colors"
-                            >
-                              <FiEdit size={14} />
-                              <span>Modifier</span>
-                            </button>
-                            <Link
-                              href={`/consultations/${consultation.id}`}
-                              className="flex items-center gap-1 bg-blue-50 dark:bg-blue-900/50 hover:bg-blue-100 dark:hover:bg-blue-900 text-blue-600 dark:text-blue-400 px-3 py-1 rounded-md text-xs transition-colors"
-                            >
-                              <FiEye size={14} />
-                              <span>Détails</span>
-                            </Link>
-                            <Link 
-                              href={`/consultations/${consultation.id}/treatments/add`}
-                              className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 text-xs flex items-center gap-1 px-3 py-1 bg-blue-50 dark:bg-blue-900/50 hover:bg-blue-100 dark:hover:bg-blue-900 rounded-md"
-                            >
-                              <FiPlus size={14} />
-                              <span>Traitement</span>
-                            </Link>
-                          </div>
-                        </td>
-                      </>
-                    )}
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                        </span>
+                      </div>
+                      
+                      <div className="flex items-center gap-2">
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          globalStatus === 'PAID' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' :
+                          globalStatus === 'PARTIAL' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300' : 
+                          'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300'
+                        }`}>
+                          {globalStatus === 'PAID' ? 'Payé' : 
+                           globalStatus === 'PARTIAL' ? 'Partiel' : 'Non payé'}
+                        </span>
+                        {globalStatus === 'PARTIAL' && (
+                          <span className="text-xs text-gray-500 dark:text-gray-400">
+                            {paidAmount.toLocaleString()} / {totalCost.toLocaleString()} FCFA
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    
+                    <div className="flex flex-wrap gap-2 mt-4">
+                      <button
+                        onClick={() => startEditing(consultation)}
+                        className="flex items-center gap-1 bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 px-3 py-1 rounded-md text-sm transition-colors"
+                      >
+                        <FiEdit size={14} />
+                        <span>Modifier</span>
+                      </button>
+                      <Link
+                        href={`/consultations/${consultation.id}`}
+                        className="flex items-center gap-1 bg-blue-50 dark:bg-blue-900/50 hover:bg-blue-100 dark:hover:bg-blue-900 text-blue-600 dark:text-blue-400 px-3 py-1 rounded-md text-sm transition-colors"
+                      >
+                        <FiEye size={14} />
+                        <span>Détails</span>
+                      </Link>
+                      <Link 
+                        href={`/consultations/${consultation.id}/treatments/add`}
+                        className="flex items-center gap-1 bg-green-50 dark:bg-green-900/50 hover:bg-green-100 dark:hover:bg-green-900 text-green-600 dark:text-green-400 px-3 py-1 rounded-md text-sm transition-colors"
+                      >
+                        <FiPlus size={14} />
+                        <span>Traitement</span>
+                      </Link>
+                    </div>
+                  </>
+                )}
+              </div>
+            );
+          })
+        )}
       </div>
-
-      {filteredConsultations.length === 0 && (
-        <div className="mt-8 text-center text-gray-500 dark:text-gray-400">
-          {searchTerm ? 
-            `Aucune consultation trouvée pour "${searchTerm}"` : 
-            'Aucune consultation enregistrée'}
-        </div>
-      )}
     </div>
   );
 }

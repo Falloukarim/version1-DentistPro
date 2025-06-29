@@ -1,6 +1,6 @@
 {
   "name": "Klinika",
-  "short_name": "Klinia",
+  "short_name": "KliniKa",
   "description": "Application de gestion medicale",
   "start_url": "/",
   "display": "standalone",

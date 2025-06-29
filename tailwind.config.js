@@ -11,6 +11,9 @@ module.exports = {
 		  md: 'calc(var(--radius) - 2px)',
 		  sm: 'calc(var(--radius) - 4px)'
 		},
+		 backgroundImage: {
+      'custom-gradient': 'linear-gradient(to bottom, #61D6A6, #393785)',
+    },
 		colors: {
 		  border: "hsl(var(--border))",
 		  input: "hsl(var(--input))",

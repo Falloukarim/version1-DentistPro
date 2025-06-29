@@ -12,7 +12,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
-import { FiPlus, FiRefreshCw, FiShoppingCart } from "react-icons/fi";
+import { FiPlus, FiRefreshCw, FiShoppingCart, FiArrowLeft } from "react-icons/fi";
 import { addProduct, restockProduct } from "./action";
 import type { Product } from "./action";
 import ErrorAlert from "../../components/ErrorAlert";
@@ -21,7 +21,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { FiArrowLeft } from "react-icons/fi";
+
 interface ProductsListProps {
   initialProducts: Product[] | null;
 }
@@ -36,6 +36,13 @@ export default function ProductsList({ initialProducts }: ProductsListProps) {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // 🌑 Couleurs noires et gris foncé
+  const primaryColor = "#000000"; // Noir
+  const secondaryColor = "#222222"; // Gris très foncé
+  const accentColor = "#444444"; // Gris foncé
+  const lightAccent = "#dddddd"; // Gris clair
+  const darkAccent = "#111111"; // Noir légèrement atténué
 
   const mostUsed = products.reduce(
     (max, product) =>
@@ -116,30 +123,22 @@ export default function ProductsList({ initialProducts }: ProductsListProps) {
     try {
       const response = await fetch(`/api/products/use/${productId}`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
       });
-      
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || "Erreur lors de l'utilisation");
       }
-  
       const updatedProduct = await response.json();
-      
       setProducts(prev =>
         prev.map(p => (p.id === updatedProduct.id ? updatedProduct : p))
       );
-      
       toast.success("Produit utilisé", {
         description: `${updatedProduct.name} a été utilisé. Stock restant: ${updatedProduct.disponible}`,
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erreur lors de l'utilisation");
-      toast.error("Erreur", {
-        description: "Impossible d'utiliser le produit",
-      });
+      toast.error("Erreur", { description: "Impossible d'utiliser le produit" });
     } finally {
       setLoading(false);
     }
@@ -157,28 +156,32 @@ export default function ProductsList({ initialProducts }: ProductsListProps) {
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erreur lors du réapprovisionnement");
-      toast.error("Erreur", {
-        description: "Impossible de réapprovisionner le produit",
-      });
+      toast.error("Erreur", { description: "Impossible de réapprovisionner le produit" });
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <main className="container mx-auto py-6 px-4">
+    <main
+      className="container mx-auto py-6 px-4"
+      style={{
+        background: "linear-gradient(to right, #fce97f, #f797a9)",
+        color: primaryColor,
+      }}
+    >
       <Link href="/dashboard" className="text-muted-foreground hover:text-primary">
-              <FiArrowLeft size={20} />
+        <FiArrowLeft size={20} />
       </Link>
-      <h1 className="text-3xl font-bold mb-6 text-primary">Gestion des produits</h1>
+      <h1 className="text-3xl font-bold mb-6">Gestion des produits</h1>
 
       {error && <ErrorAlert message={error} onClose={clearError} />}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Formulaire d'ajout */}
-        <Card className="border-blue-200 bg-blue-50">
-          <CardHeader className="bg-blue-100 rounded-t-lg">
-            <CardTitle className="text-blue-800">Ajouter un produit</CardTitle>
+        <Card className="border-2" style={{ borderColor: accentColor, backgroundColor: lightAccent }}>
+          <CardHeader className="rounded-t-lg" style={{ backgroundColor: primaryColor }}>
+            <CardTitle style={{ color: 'white' }}>Ajouter un produit</CardTitle>
           </CardHeader>
           <CardContent className="pt-6">
             <form onSubmit={handleAddProduct} className="space-y-4">
@@ -190,7 +193,8 @@ export default function ProductsList({ initialProducts }: ProductsListProps) {
                 onChange={handleInputChange}
                 required
                 disabled={loading}
-                className="border-blue-300 focus:ring-blue-500 focus:border-blue-500"
+                className="border-2 focus:ring-2"
+                style={{ borderColor: darkAccent }}
               />
               <Input
                 type="number"
@@ -202,7 +206,8 @@ export default function ProductsList({ initialProducts }: ProductsListProps) {
                 disabled={loading}
                 min="0"
                 step="0.01"
-                className="border-blue-300 focus:ring-blue-500 focus:border-blue-500"
+                className="border-2 focus:ring-2"
+                style={{ borderColor: darkAccent }}
               />
               <Input
                 type="number"
@@ -213,7 +218,8 @@ export default function ProductsList({ initialProducts }: ProductsListProps) {
                 required
                 disabled={loading}
                 min="0"
-                className="border-blue-300 focus:ring-blue-500 focus:border-blue-500"
+                className="border-2 focus:ring-2"
+                style={{ borderColor: darkAccent }}
               />
               <Textarea
                 name="description"
@@ -222,12 +228,14 @@ export default function ProductsList({ initialProducts }: ProductsListProps) {
                 onChange={handleInputChange}
                 disabled={loading}
                 rows={3}
-                className="border-blue-300 focus:ring-blue-500 focus:border-blue-500"
+                className="border-2 focus:ring-2"
+                style={{ borderColor: darkAccent }}
               />
-              <Button 
-                type="submit" 
-                disabled={loading} 
-                className="w-full bg-blue-600 hover:bg-blue-700"
+              <Button
+                type="submit"
+                disabled={loading}
+                style={{ backgroundColor: secondaryColor }}
+                className="w-full hover:bg-opacity-90 text-white"
               >
                 <FiPlus className="mr-2" /> Ajouter le produit
               </Button>
@@ -236,34 +244,28 @@ export default function ProductsList({ initialProducts }: ProductsListProps) {
         </Card>
 
         {/* Statistiques */}
-        <Card className="border-purple-200 bg-purple-50">
-          <CardHeader className="bg-purple-100 rounded-t-lg">
-            <CardTitle className="text-purple-800">Statistiques</CardTitle>
+        <Card className="border-2" style={{ borderColor: darkAccent, backgroundColor: lightAccent }}>
+          <CardHeader className="rounded-t-lg" style={{ backgroundColor: darkAccent }}>
+            <CardTitle style={{ color: 'white' }}>Statistiques</CardTitle>
           </CardHeader>
           <CardContent className="pt-6">
-            <div className="mb-6 p-4 bg-white rounded-lg shadow-sm border border-purple-100">
-              <p className="text-sm text-purple-600">Produit le plus utilisé</p>
-              <p className="text-xl font-semibold text-purple-900">
-                {mostUsed.name} <span className="text-purple-600">({mostUsed.count}x)</span>
+            <div className="mb-6 p-4 rounded-lg shadow-sm border-2" style={{ borderColor: accentColor, backgroundColor: 'white' }}>
+              <p className="text-sm" style={{ color: secondaryColor }}>Produit le plus utilisé</p>
+              <p className="text-xl font-semibold" style={{ color: primaryColor }}>
+                {mostUsed.name} <span style={{ color: secondaryColor }}>({mostUsed.count}x)</span>
               </p>
             </div>
-            
-            <div className="h-[300px] p-4 bg-white rounded-lg shadow-sm border border-purple-100">
+
+            <div className="h-[300px] p-4 rounded-lg shadow-sm border-2" style={{ borderColor: accentColor, backgroundColor: 'white' }}>
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e9d8fd" />
-                  <XAxis dataKey="name" stroke="#6b46c1" />
-                  <YAxis stroke="#6b46c1" />
-                  <Tooltip 
-                    contentStyle={{ 
-                      backgroundColor: '#faf5ff',
-                      borderColor: '#9f7aea',
-                      borderRadius: '0.5rem'
-                    }} 
-                  />
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" style={{ stroke: darkAccent }} />
+                  <YAxis style={{ stroke: darkAccent }} />
+                  <Tooltip />
                   <Legend />
-                  <Bar dataKey="utilisé" fill="#9f7aea" name="Utilisé" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="restant" fill="#d6bcfa" name="Restant" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="utilisé" fill={secondaryColor} name="Utilisé" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="restant" fill={accentColor} name="Restant" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -272,34 +274,32 @@ export default function ProductsList({ initialProducts }: ProductsListProps) {
       </div>
 
       {/* Liste des produits */}
-      <Card className="mt-6 border-green-200">
-        <CardHeader className="bg-green-100 rounded-t-lg">
-          <CardTitle className="text-green-800">Inventaire des produits</CardTitle>
+      <Card className="mt-6 border-2" style={{ borderColor: primaryColor }}>
+        <CardHeader className="rounded-t-lg" style={{ backgroundColor: primaryColor }}>
+          <CardTitle style={{ color: 'white' }}>Inventaire des produits</CardTitle>
         </CardHeader>
         <CardContent className="pt-6">
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-green-200">
-              <thead className="bg-green-50">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead style={{ backgroundColor: lightAccent }}>
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-green-800 uppercase tracking-wider">Nom</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-green-800 uppercase tracking-wider">Prix</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-green-800 uppercase tracking-wider">Stock</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-green-800 uppercase tracking-wider">Utilisé</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-green-800 uppercase tracking-wider">Disponible</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-green-800 uppercase tracking-wider">Actions</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: primaryColor }}>Nom</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: primaryColor }}>Prix</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: primaryColor }}>Stock</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: primaryColor }}>Utilisé</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: primaryColor }}>Disponible</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: primaryColor }}>Actions</th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-green-200">
+              <tbody className="bg-white divide-y divide-gray-200">
                 {products.length > 0 ? (
                   products.map((product) => (
-                    <tr key={product.id} className="hover:bg-green-50">
-                      <td className="px-6 py-4 whitespace-nowrap text-green-900 font-medium">{product.name}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-green-900">{product.price} FCFA</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-green-900">{product.stock}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-green-900">{product.used}</td>
-                      <td className={`px-6 py-4 whitespace-nowrap font-medium ${
-                        product.disponible < 5 ? 'text-red-600' : 'text-green-600'
-                      }`}>
+                    <tr key={product.id}>
+                      <td className="px-6 py-4 whitespace-nowrap font-medium" style={{ color: primaryColor }}>{product.name}</td>
+                      <td className="px-6 py-4 whitespace-nowrap" style={{ color: primaryColor }}>{product.price} FCFA</td>
+                      <td className="px-6 py-4 whitespace-nowrap" style={{ color: primaryColor }}>{product.stock}</td>
+                      <td className="px-6 py-4 whitespace-nowrap" style={{ color: primaryColor }}>{product.used}</td>
+                      <td className="px-6 py-4 whitespace-nowrap font-medium" style={{ color: product.disponible >= 5 ? secondaryColor : 'red' }}>
                         {product.disponible}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap space-x-2">
@@ -308,7 +308,8 @@ export default function ProductsList({ initialProducts }: ProductsListProps) {
                           variant="outline"
                           onClick={() => handleUseProduct(product.id)}
                           disabled={loading || product.disponible <= 0}
-                          className="border-green-600 text-green-600 hover:bg-green-600 hover:text-white"
+                          style={{ borderColor: secondaryColor, color: secondaryColor }}
+                          className="hover:bg-opacity-90 hover:text-white"
                         >
                           <FiShoppingCart className="mr-2" /> Utiliser
                         </Button>
@@ -316,7 +317,8 @@ export default function ProductsList({ initialProducts }: ProductsListProps) {
                           size="sm"
                           onClick={() => handleRestockProduct(product.id)}
                           disabled={loading}
-                          className="bg-green-600 hover:bg-green-700"
+                          style={{ backgroundColor: accentColor }}
+                          className="hover:bg-opacity-90 text-white"
                         >
                           <FiRefreshCw className="mr-2" /> Réapprovisionner
                         </Button>
@@ -325,7 +327,7 @@ export default function ProductsList({ initialProducts }: ProductsListProps) {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={6} className="px-6 py-4 text-center text-green-600">
+                    <td colSpan={6} className="px-6 py-4 text-center" style={{ color: secondaryColor }}>
                       Aucun produit disponible
                     </td>
                   </tr>

@@ -128,18 +128,20 @@ export default function AppointmentsList({ appointments: initialAppointments }: 
   };
 
   return (
-    <div className="p-6 bg-background min-h-screen">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+    <div className="p-4 sm:p-6 bg-background min-h-screen">
+      {/* En-tête */}
+      <div className="flex flex-col gap-4 mb-6">
         <div className="flex items-center gap-3">
           <Link href="/dashboard" className="text-muted-foreground hover:text-primary">
             <FiArrowLeft size={20} />
           </Link>
-          <h1 className="text-2xl md:text-3xl font-bold text-foreground flex items-center gap-2">
+          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
             <FiCalendar className="text-primary" />
             Gestion des Rendez-vous
           </h1>
         </div>
-        <div className="flex gap-3">
+        
+        <div className="flex flex-col sm:flex-row gap-3">
           <Button
             onClick={handleDeleteAll}
             variant="destructive"
@@ -157,9 +159,10 @@ export default function AppointmentsList({ appointments: initialAppointments }: 
         </div>
       </div>
 
-      <div className="mb-8 bg-card rounded-xl shadow-sm border overflow-hidden">
+      {/* Calendrier */}
+      <div className="mb-6 bg-card rounded-xl shadow-sm border overflow-hidden">
         <div className="p-4 border-b bg-accent">
-          <h2 className="text-xl font-semibold text-primary flex items-center gap-2">
+          <h2 className="text-lg font-semibold text-primary flex items-center gap-2">
             <FiClock className="text-primary" />
             Calendrier des Rendez-vous
           </h2>
@@ -170,60 +173,74 @@ export default function AppointmentsList({ appointments: initialAppointments }: 
       </div>
 
       {/* Section RDV du jour */}
-      <div className="mb-8 bg-card rounded-xl shadow-sm border overflow-hidden">
+      <div className="mb-6 bg-card rounded-xl shadow-sm border overflow-hidden">
         <div className="p-4 border-b bg-accent">
-          <h2 className="text-xl font-semibold text-primary flex items-center gap-2">
+          <h2 className="text-lg font-semibold text-primary flex items-center gap-2">
             <FiClock className="text-primary" />
-           Rendez-vous aujourd&apos;hui
-
-({new Date(today).toLocaleDateString('fr-FR')})
+            Rendez-vous aujourd'hui ({new Date(today).toLocaleDateString('fr-FR')})
           </h2>
         </div>
         <div className="p-4">
           {todaysAppointments.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-accent">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Patient</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Téléphone</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Heure</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Statut</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Motif</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {todaysAppointments.map(appointment => (
-                    <tr key={appointment.id} className="hover:bg-accent/50 transition-colors">
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        <div className="flex items-center gap-2 text-foreground">
-                          <FiUser className="text-muted-foreground" />
-                          {appointment.patientName}
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-muted-foreground">
-                        {appointment.patientPhone}
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-muted-foreground">
+            <div className="space-y-4">
+              {todaysAppointments.map(appointment => (
+                <div key={appointment.id} className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 p-4">
+                  <div className="flex flex-col gap-3">
+                    <div className="flex items-center gap-2">
+                      <FiUser className="text-muted-foreground" />
+                      <span className="font-medium text-foreground">{appointment.patientName}</span>
+                    </div>
+                    
+                    <div className="flex items-center gap-2">
+                      <FiPhone className="text-muted-foreground" />
+                      <span className="text-muted-foreground">{appointment.patientPhone}</span>
+                    </div>
+                    
+                    <div className="flex items-center gap-2">
+                      <FiClock className="text-muted-foreground" />
+                      <span className="text-muted-foreground">
                         {new Date(appointment.date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusStyle(appointment.status)}`}>
-                          {getStatusLabel(appointment.status)}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-muted-foreground">
+                      </span>
+                    </div>
+                    
+                    <div className="flex items-center gap-2">
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusStyle(appointment.status)}`}>
+                        {getStatusLabel(appointment.status)}
+                      </span>
+                    </div>
+                    
+                    <div className="flex items-start gap-2">
+                      <FiInfo className="text-muted-foreground mt-0.5" />
+                      <span className="text-muted-foreground">
                         {appointment.reason || "Non spécifié"}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                      </span>
+                    </div>
+                    
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      <Button
+                        onClick={() => startEditing(appointment)}
+                        variant="outline"
+                        size="sm"
+                        className="gap-1"
+                      >
+                        <FiEdit size={14} />
+                        <span>Modifier</span>
+                      </Button>
+                      <Button asChild variant="outline" size="sm" className="gap-1">
+                        <Link href={`/appointments/${appointment.id}`}>
+                          <FiEye size={14} />
+                          <span>Détails</span>
+                        </Link>
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           ) : (
             <div className="text-center py-8 text-muted-foreground">
-Aucun rendez-vous enregistré
-</div>
+              Aucun rendez-vous aujourd'hui
+            </div>
           )}
         </div>
       </div>
@@ -231,166 +248,155 @@ Aucun rendez-vous enregistré
       {/* Tous les RDV */}
       <div className="bg-card rounded-xl shadow-sm border overflow-hidden">
         <div className="p-4 border-b bg-accent">
-          <h2 className="text-xl font-semibold text-primary">
+          <h2 className="text-lg font-semibold text-primary">
             Historique des Rendez-vous
           </h2>
         </div>
         <div className="p-4">
           {sortedAppointments.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-accent">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Patient</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Date</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Statut</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Motif</th>
-                    <th className="px-4 py-3 text-right text-sm font-medium text-muted-foreground">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {sortedAppointments.map(appointment => {
-                    const isEditing = editingId === appointment.id;
-                    
-                    return (
-                      <tr key={appointment.id} className="hover:bg-accent/50 transition-colors">
-                        {isEditing ? (
-                          <td className="px-4 py-3" colSpan={5}>
-                            <form onSubmit={handleSubmit} className="space-y-4">
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                  <label className="block text-sm font-medium text-foreground mb-1">
-                                    <FiUser className="inline mr-2" /> Nom patient
-                                  </label>
-                                  <input
-                                    type="text"
-                                    name="patientName"
-                                    value={editForm.patientName}
-                                    onChange={handleEditChange}
-                                    className="w-full p-2 border rounded-md bg-background"
-                                    required
-                                  />
-                                </div>
-                                <div>
-                                  <label className="block text-sm font-medium text-foreground mb-1">
-                                    <FiPhone className="inline mr-2" /> Téléphone
-                                  </label>
-                                  <input
-                                    type="text"
-                                    name="patientPhone"
-                                    value={editForm.patientPhone}
-                                    onChange={handleEditChange}
-                                    className="w-full p-2 border rounded-md bg-background"
-                                    required
-                                  />
-                                </div>
-                                <div>
-                                  <label className="block text-sm font-medium text-foreground mb-1">
-                                    <FiCalendar className="inline mr-2" /> Date
-                                  </label>
-                                  <input
-                                    type="date"
-                                    name="date"
-                                    value={editForm.date}
-                                    onChange={handleEditChange}
-                                    className="w-full p-2 border rounded-md bg-background"
-                                    required
-                                  />
-                                </div>
-                                <div>
-                                  <label className="block text-sm font-medium text-foreground mb-1">
-                                    Statut
-                                  </label>
-                                  <select
-                                    name="status"
-                                    value={editForm.status}
-                                    onChange={handleEditChange}
-                                    className="w-full p-2 border rounded-md bg-background"
-                                  >
-                                    <option value="scheduled">Planifié</option>
-                                    <option value="completed">Terminé</option>
-                                    <option value="cancelled">Annulé</option>
-                                    <option value="no_show">Non venu</option>
-                                  </select>
-                                </div>
-                              </div>
-                              <div>
-                                <label className="block text-sm font-medium text-foreground mb-1">
-                                  <FiInfo className="inline mr-2" /> Motif
-                                </label>
-                                <textarea
-                                  name="reason"
-                                  value={editForm.reason}
-                                  onChange={handleEditChange}
-                                  className="w-full p-2 border rounded-md bg-background"
-                                  rows={2}
-                                  required
-                                />
-                              </div>
-                              <div className="flex justify-end gap-2">
-                                <Button
-                                  type="button"
-                                  onClick={cancelEdit}
-                                  variant="outline"
-                                >
-                                  <FiX className="mr-2" /> Annuler
-                                </Button>
-                                <Button type="submit">
-                                  <FiSave className="mr-2" /> Enregistrer
-                                </Button>
-                              </div>
-                            </form>
-                          </td>
-                        ) : (
-                          <>
-                            <td className="px-4 py-3 whitespace-nowrap">
-                              <div className="flex items-center gap-2 text-foreground">
-                                <FiUser className="text-muted-foreground" />
-                                {appointment.patientName}
-                              </div>
-                            </td>
-                            <td className="px-4 py-3 whitespace-nowrap text-sm">
-                              <div className="text-foreground">
-                                {new Date(appointment.date).toLocaleDateString('fr-FR')}
-                              </div>
-                              <div className="text-xs text-muted-foreground">
-                                {new Date(appointment.date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
-                              </div>
-                            </td>
-                            <td className="px-4 py-3 whitespace-nowrap">
-                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusStyle(appointment.status)}`}>
-                                {getStatusLabel(appointment.status)}
-                              </span>
-                            </td>
-                            <td className="px-4 py-3 whitespace-nowrap text-sm text-muted-foreground">
-                              {appointment.reason || "Non spécifié"}
-                            </td>
-                            <td className="px-4 py-3 whitespace-nowrap text-right text-sm font-medium">
-                              <div className="flex justify-end gap-2">
-                                <Button
-                                  onClick={() => startEditing(appointment)}
-                                  variant="outline"
-                                  size="sm"
-                                  className="gap-1"
-                                >
-                                  <FiEdit size={14} />
-                                  <span>Modifier</span>
-                                </Button>
-                                <Button asChild variant="outline" size="sm" className="gap-1">
-                                  <Link href={`/appointments/${appointment.id}`}>
-                                    <FiEye size={14} />
-                                    <span>Détails</span>
-                                  </Link>
-                                </Button>
-                              </div>
-                            </td>
-                          </>
-                        )}
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+            <div className="space-y-4">
+              {sortedAppointments.map(appointment => {
+                const isEditing = editingId === appointment.id;
+                
+                return (
+                  <div key={appointment.id} className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 p-4">
+                    {isEditing ? (
+                      <form onSubmit={handleSubmit} className="space-y-4">
+                        <div className="grid grid-cols-1 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium text-foreground mb-1">
+                              <FiUser className="inline mr-2" /> Nom patient
+                            </label>
+                            <input
+                              type="text"
+                              name="patientName"
+                              value={editForm.patientName}
+                              onChange={handleEditChange}
+                              className="w-full p-2 border rounded-md bg-background"
+                              required
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-foreground mb-1">
+                              <FiPhone className="inline mr-2" /> Téléphone
+                            </label>
+                            <input
+                              type="text"
+                              name="patientPhone"
+                              value={editForm.patientPhone}
+                              onChange={handleEditChange}
+                              className="w-full p-2 border rounded-md bg-background"
+                              required
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-foreground mb-1">
+                              <FiCalendar className="inline mr-2" /> Date
+                            </label>
+                            <input
+                              type="date"
+                              name="date"
+                              value={editForm.date}
+                              onChange={handleEditChange}
+                              className="w-full p-2 border rounded-md bg-background"
+                              required
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-foreground mb-1">
+                              Statut
+                            </label>
+                            <select
+                              name="status"
+                              value={editForm.status}
+                              onChange={handleEditChange}
+                              className="w-full p-2 border rounded-md bg-background"
+                            >
+                              <option value="scheduled">Planifié</option>
+                              <option value="completed">Terminé</option>
+                              <option value="cancelled">Annulé</option>
+                              <option value="no_show">Non venu</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-foreground mb-1">
+                              <FiInfo className="inline mr-2" /> Motif
+                            </label>
+                            <textarea
+                              name="reason"
+                              value={editForm.reason}
+                              onChange={handleEditChange}
+                              className="w-full p-2 border rounded-md bg-background"
+                              rows={2}
+                              required
+                            />
+                          </div>
+                        </div>
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            type="button"
+                            onClick={cancelEdit}
+                            variant="outline"
+                          >
+                            <FiX className="mr-2" /> Annuler
+                          </Button>
+                          <Button type="submit">
+                            <FiSave className="mr-2" /> Enregistrer
+                          </Button>
+                        </div>
+                      </form>
+                    ) : (
+                      <div className="flex flex-col gap-3">
+                        <div className="flex items-center gap-2">
+                          <FiUser className="text-muted-foreground" />
+                          <span className="font-medium text-foreground">{appointment.patientName}</span>
+                        </div>
+                        
+                        <div className="flex items-center gap-2">
+                          <FiCalendar className="text-muted-foreground" />
+                          <span className="text-muted-foreground">
+                            {new Date(appointment.date).toLocaleDateString('fr-FR')}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            {new Date(appointment.date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
+                        
+                        <div className="flex items-center gap-2">
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusStyle(appointment.status)}`}>
+                            {getStatusLabel(appointment.status)}
+                          </span>
+                        </div>
+                        
+                        <div className="flex items-start gap-2">
+                          <FiInfo className="text-muted-foreground mt-0.5" />
+                          <span className="text-muted-foreground">
+                            {appointment.reason || "Non spécifié"}
+                          </span>
+                        </div>
+                        
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          <Button
+                            onClick={() => startEditing(appointment)}
+                            variant="outline"
+                            size="sm"
+                            className="gap-1"
+                          >
+                            <FiEdit size={14} />
+                            <span>Modifier</span>
+                          </Button>
+                          <Button asChild variant="outline" size="sm" className="gap-1">
+                            <Link href={`/appointments/${appointment.id}`}>
+                              <FiEye size={14} />
+                              <span>Détails</span>
+                            </Link>
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           ) : (
             <div className="text-center py-8 text-muted-foreground">

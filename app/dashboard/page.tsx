@@ -70,44 +70,45 @@ async function TodaysAppointments() {
   }
 
   return (
-    <div className="space-y-2 sm:space-y-3">
-      {appointments.map((appointment: { id: Key | null | undefined; patientName: string | number | bigint | boolean | ReactElement<unknown, string | JSXElementConstructor<any>> | Iterable<ReactNode> | ReactPortal | Promise<string | number | bigint | boolean | ReactPortal | ReactElement<unknown, string | JSXElementConstructor<any>> | Iterable<ReactNode> | null | undefined> | null | undefined; reason: string | number | bigint | boolean | ReactElement<unknown, string | JSXElementConstructor<any>> | Iterable<ReactNode> | ReactPortal | Promise<string | number | bigint | boolean | ReactPortal | ReactElement<unknown, string | JSXElementConstructor<any>> | Iterable<ReactNode> | null | undefined> | null | undefined; date: string | number | Date; status: string; patientPhone: string | number | bigint | boolean | ReactElement<unknown, string | JSXElementConstructor<any>> | Iterable<ReactNode> | ReactPortal | Promise<string | number | bigint | boolean | ReactPortal | ReactElement<unknown, string | JSXElementConstructor<any>> | Iterable<ReactNode> | null | undefined> | null | undefined; }) => (
-        <div key={appointment.id} className="border-b border-border pb-2 sm:pb-3 last:border-0">
-          <div className="flex justify-between items-start gap-2">
-            <div className="min-w-0">
-              <h3 className="font-medium text-sm sm:text-base truncate text-foreground">
-                {appointment.patientName}
-              </h3>
-              <p className="text-xs sm:text-sm text-muted-foreground truncate">
-                {appointment.reason}
-              </p>
-            </div>
-            <div className="text-right shrink-0">
-              <p className="font-medium text-xs sm:text-sm whitespace-nowrap text-foreground">
-                {new Date(appointment.date).toLocaleDateString('fr-FR', { 
-                  hour: '2-digit', 
-                  minute: '2-digit' 
-                })}
-              </p>
-              <span className={`inline-block mt-1 text-[10px] sm:text-xs px-2 py-1 rounded-full ${
-                appointment.status === 'scheduled' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' :
-                appointment.status === 'completed' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
-                appointment.status === 'cancelled' ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' :
-                'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
-              }`}>
-                {appointment.status === 'scheduled' ? 'Planifié' :
-                 appointment.status === 'completed' ? 'Terminé' :
-                 appointment.status === 'cancelled' ? 'Annulé' : 'Non venu'}
-              </span>
-            </div>
-          </div>
-          <div className="flex items-center mt-1 text-xs sm:text-sm text-muted-foreground">
-            <FiPhone className="mr-1 shrink-0" size={12} />
-            <span className="truncate">{appointment.patientPhone}</span>
-          </div>
+    <div className="bg-custom-gradient min-h-screen p-4">
+  {appointments.map((appointment) => (
+    <div key={appointment.id} className="border-b border-border pb-2 sm:pb-3 last:border-0">
+      <div className="flex justify-between items-start gap-2">
+        <div className="min-w-0">
+          <h3 className="font-medium text-sm sm:text-base truncate text-white">
+            {appointment.patientName}
+          </h3>
+          <p className="text-xs sm:text-sm truncate text-white">
+            {appointment.reason}
+          </p>
         </div>
-      ))}
+        <div className="text-right shrink-0">
+          <p className="font-medium text-xs sm:text-sm whitespace-nowrap text-white">
+            {new Date(appointment.date).toLocaleDateString('fr-FR', { 
+              hour: '2-digit', 
+              minute: '2-digit' 
+            })}
+          </p>
+          <span className={`inline-block mt-1 text-[10px] sm:text-xs px-2 py-1 rounded-full ${
+            appointment.status === 'scheduled' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' :
+            appointment.status === 'completed' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
+            appointment.status === 'cancelled' ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' :
+            'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
+          }`}>
+            {appointment.status === 'scheduled' ? 'Planifié' :
+             appointment.status === 'completed' ? 'Terminé' :
+             appointment.status === 'cancelled' ? 'Annulé' : 'Non venu'}
+          </span>
+        </div>
+      </div>
+      <div className="flex items-center mt-1 text-xs sm:text-sm text-white">
+        <FiPhone className="mr-1 shrink-0" size={12} />
+        <span className="truncate">{appointment.patientPhone}</span>
+      </div>
     </div>
+  ))}
+</div>
+
   );
 }
 
@@ -145,7 +146,7 @@ export default async function DashboardHome() {
   }
 
   return (
-    <div className="w-full p-4">
+    <div className="w-full p-4 bg-custom-gradient min-h-screen">
       <div className="mb-6">
         <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Tableau de Bord</h1>
         <p className="text-sm sm:text-base text-muted-foreground mt-1">

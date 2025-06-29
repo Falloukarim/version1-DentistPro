@@ -38,33 +38,37 @@ export default async function ConsultationDetails({
 
   return (
     <Layout>
-      {/* Conteneur principal avec scrolling horizontal */}
-      <div className="w-full h-screen overflow-x-auto bg-background dark:bg-gray-950">
-        {/* Contenu avec largeur minimale garantie */}
-        <div className="min-w-[1024px] p-4 max-w-6xl mx-auto">
+      {/* Conteneur principal responsive */}
+      <div className="w-full bg-background dark:bg-gray-950 p-4">
+        {/* Contenu avec largeur maximale */}
+        <div className="max-w-7xl mx-auto">
           
           {/* En-tête */}
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-            <div className="w-full">
-              <Link href="/consultations" className="flex items-center text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 mb-3">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+            <div className="flex flex-col gap-3 w-full">
+              <Link href="/consultations" className="flex items-center text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 w-fit">
                 <FiArrowLeft className="mr-2" />
                 <span className="font-medium">Retour aux consultations</span>
               </Link>
-              <Link 
-                href={`/consultations/${consultation.id}/treatments/add`}
-                className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-white hover:bg-gray-50 dark:bg-gray-900 dark:hover:bg-gray-800 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 border border-gray-200 dark:border-gray-800 px-4 py-2 text-sm rounded-lg transition-colors shadow-sm hover:shadow-md min-w-[200px]"
-              >
-                <FiPlus className="w-4 h-4" />
-                <span>Ajouter traitement</span>
-              </Link>
-              <Link
-                href={`/consultations/edit/${consultation.id}`}
-                className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800 text-white px-4 py-2 text-sm rounded-lg transition-colors shadow-sm hover:shadow-md min-w-[200px]"
-              >
-                <FiEdit className="w-4 h-4" />
-                <span>Modifier la consultation</span>
-              </Link>
-              <h1 className="text-2xl font-bold text-gray-800 dark:text-white flex flex-wrap items-center">
+              
+              <div className="flex flex-col sm:flex-row gap-3">
+                <Link 
+                  href={`/consultations/${consultation.id}/treatments/add`}
+                  className="flex items-center justify-center gap-2 bg-white hover:bg-gray-50 dark:bg-gray-900 dark:hover:bg-gray-800 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 border border-gray-200 dark:border-gray-800 px-4 py-2 text-sm rounded-lg transition-colors shadow-sm hover:shadow-md"
+                >
+                  <FiPlus className="w-4 h-4" />
+                  <span>Ajouter traitement</span>
+                </Link>
+                <Link
+                  href={`/consultations/edit/${consultation.id}`}
+                  className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800 text-white px-4 py-2 text-sm rounded-lg transition-colors shadow-sm hover:shadow-md"
+                >
+                  <FiEdit className="w-4 h-4" />
+                  <span>Modifier la consultation</span>
+                </Link>
+              </div>
+              
+              <h1 className="text-xl md:text-2xl font-bold text-gray-800 dark:text-white flex flex-wrap items-center">
                 <FiUser className="mr-3 text-blue-500 dark:text-blue-400" />
                 {patientName}
                 {patientAge && (
@@ -74,7 +78,7 @@ export default async function ConsultationDetails({
             </div>
           </div>
 
-          {/* Grille principale */}
+          {/* Grille principale responsive */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             
             {/* Colonne de gauche (1/3) */}
@@ -90,7 +94,7 @@ export default async function ConsultationDetails({
                     <FiPhone className="mt-0.5 mr-2 text-gray-500 dark:text-gray-400" />
                     <div>
                       <p className="text-sm text-gray-500 dark:text-gray-400">Téléphone</p>
-                      <p className="font-medium dark:text-white">{patientPhone}</p>
+                      <p className="font-medium dark:text-white break-all">{patientPhone}</p>
                     </div>
                   </div>
                   <div className="flex items-start">
@@ -194,7 +198,6 @@ export default async function ConsultationDetails({
                     'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300'
                   }`}>
                     {status}
-                    
                   </span>
                 </div>
 
@@ -203,22 +206,22 @@ export default async function ConsultationDetails({
                     <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-800">
                       <thead className="bg-gray-50 dark:bg-gray-800">
                         <tr>
-                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Type</th>
-                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Description</th>
-                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Statut</th>
-                          <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Montant</th>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Type</th>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Description</th>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Statut</th>
+                          <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Montant</th>
                         </tr>
                       </thead>
                       <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-800">
                         {treatments.map(treatment => (
                           <tr key={treatment.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                            <td className="px-4 py-3 whitespace-nowrap font-medium dark:text-white">
+                            <td className="px-3 py-3 whitespace-nowrap font-medium dark:text-white">
                               {treatment.type}
                             </td>
-                            <td className="px-4 py-3 text-gray-500 dark:text-gray-400 break-words max-w-[200px]">
+                            <td className="px-3 py-3 text-gray-500 dark:text-gray-400 break-words max-w-[200px]">
                               {treatment.description || '-'}
                             </td>
-                            <td className="px-4 py-3 whitespace-nowrap">
+                            <td className="px-3 py-3 whitespace-nowrap">
                               <span className={`px-2 py-0.5 rounded-full text-xs ${
                                 treatment.status === 'PAID' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' :
                                 treatment.status === 'PARTIAL' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300' : 
@@ -233,7 +236,7 @@ export default async function ConsultationDetails({
                                 </span>
                               )}
                             </td>
-                            <td className="px-4 py-3 whitespace-nowrap text-right font-bold dark:text-white">
+                            <td className="px-3 py-3 whitespace-nowrap text-right font-bold dark:text-white">
                               {treatment.amount?.toLocaleString() || '0'} FCFA
                             </td>
                           </tr>
@@ -300,12 +303,6 @@ export default async function ConsultationDetails({
               </div>
             </div>
           </div>
-
-          {/* Boutons d'action */}
-          {consultation?.id && (
-            <div className="flex flex-wrap gap-3 mt-6">
-            </div>
-          )}
         </div>
       </div>
     </Layout>

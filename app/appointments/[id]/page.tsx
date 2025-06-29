@@ -60,35 +60,25 @@ export default async function AppointmentDetailPage({ params }: AppointmentDetai
   };
 
   return (
-    <div className="max-w-4xl mx-auto p-6">
+    <div className="max-w-4xl mx-auto p-4 sm:p-6">
       <div className="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 overflow-hidden">
-        <div className="p-6 border-b border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800">
-          <div className="flex justify-between items-center">
+        <div className="p-4 sm:p-6 border-b border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
             <Link 
               href="/appointments"
-              className="flex items-center text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200"
+              className="flex items-center text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200 w-fit"
             >
               <FiArrowLeft className="mr-2" />
               Retour à la liste
             </Link>
-            <h2 className="text-2xl font-bold text-gray-800 dark:text-white flex items-center">
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-white flex items-center justify-center sm:justify-start">
               <FiCalendar className="mr-2 text-blue-500 dark:text-blue-400" />
               Détails du Rendez-vous
             </h2>
-            <div className="flex gap-2">
-              <Link
-                href={`/appointments/${appointment.id}/edit`}
-                className="flex items-center gap-1 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/50 dark:hover:bg-blue-900 text-blue-600 dark:text-blue-400 px-3 py-1 rounded-md text-sm transition-colors"
-              >
-                <FiEdit size={14} />
-                <span>Modifier</span>
-              </Link>
-              <DeleteButton id={appointment.id} />
-            </div>
           </div>
         </div>
 
-        <div className="p-6">
+        <div className="p-4 sm:p-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
             <div className="space-y-4">
               <div className="flex items-start gap-3">
@@ -97,7 +87,7 @@ export default async function AppointmentDetailPage({ params }: AppointmentDetai
                 </div>
                 <div>
                   <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Patient</h3>
-                  <p className="text-lg font-semibold dark:text-white">{appointment.patientName}</p>
+                  <p className="text-base sm:text-lg font-semibold dark:text-white">{appointment.patientName}</p>
                 </div>
               </div>
 
@@ -107,7 +97,7 @@ export default async function AppointmentDetailPage({ params }: AppointmentDetai
                 </div>
                 <div>
                   <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Téléphone</h3>
-                  <p className="text-lg font-semibold dark:text-white">{appointment.patientPhone}</p>
+                  <p className="text-base sm:text-lg font-semibold dark:text-white">{appointment.patientPhone}</p>
                 </div>
               </div>
             </div>
@@ -119,7 +109,7 @@ export default async function AppointmentDetailPage({ params }: AppointmentDetai
                 </div>
                 <div>
                   <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Date</h3>
-                  <p className="text-lg font-semibold dark:text-white">
+                  <p className="text-base sm:text-lg font-semibold dark:text-white">
                     {formatDate(appointment.date)} à {formatTime(appointment.date)}
                   </p>
                 </div>
@@ -175,6 +165,11 @@ export default async function AppointmentDetailPage({ params }: AppointmentDetai
               )}
             </div>
           </div>
+        </div>
+
+        {/* Bouton Delete en bas de la page */}
+        <div className="p-4 sm:p-6 border-t border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800 flex justify-center sm:justify-end">
+          <DeleteButton id={appointment.id} />
         </div>
       </div>
     </div>

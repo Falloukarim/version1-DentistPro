@@ -28,16 +28,23 @@ const QuickAction = ({ icon, title, href, color, alert = false }: QuickActionPro
         </div>
       )}
       <div className={`
-        h-full bg-white/80 backdrop-blur-sm
+        h-full
         rounded-xl border ${alert ? 'border-red-200/50' : 'border-white/30'}
         p-4 transition-all duration-300 ${colorClasses[color]}
         flex flex-col items-center justify-center text-center
         hover:shadow-sm
-      `}>
-        <div className={`p-3 mb-2 rounded-full bg-white/90 border ${alert ? 'border-red-200/30' : 'border-white/30'}`}>
-          {icon}
+      `}
+        style={{
+          background: "linear-gradient(to bottom, #61D6A6, #393785)",
+          backdropFilter: "blur(4px)",
+        }}
+      >
+        <div className={`p-3 mb-2 rounded-full border border-white`}>
+          <div className="text-white">
+            {icon}
+          </div>
         </div>
-        <span className="text-sm font-medium text-gray-700">
+        <span className="text-sm font-medium text-white">
           {title}
         </span>
       </div>

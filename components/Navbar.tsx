@@ -1,9 +1,10 @@
 import React from "react";
-import { FaTooth, FaBars, FaClinicMedical } from "react-icons/fa";
+import { FaBars, FaClinicMedical } from "react-icons/fa";
 import { ThemeToggle } from "./ui/ThemeToggle";
 import AdminLinks from "./AdminLinks";
 import Link from "next/link";
 import { LogoutButton } from "./LogoutButton"; // Importez le nouveau composant
+import { HiOutlineOfficeBuilding } from 'react-icons/hi';
 
 interface NavbarProps {
   onMenuToggle?: () => void;
@@ -37,7 +38,7 @@ const Navbar = ({ onMenuToggle, userRole }: NavbarProps) => {
         )}
         <div className="flex items-center gap-3">
           <AdminLinks />
-          <FaTooth className="text-primary text-xl" />
+<HiOutlineOfficeBuilding className="text-primary text-xl" />
           <h1 className="text-lg md:text-xl font-semibold text-foreground">
             <span className="font-light">Cabinet</span> Medical
           </h1>

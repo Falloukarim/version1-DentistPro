@@ -30,7 +30,7 @@ interface StatCardProps {
         `}>
           <div className="flex justify-between items-start">
             <div>
-              <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <p className="text-xs font-medium text-gray-1000 uppercase tracking-wider">
                 {title}
               </p>
               <p className="text-2xl font-bold mt-2 text-gray-800">
