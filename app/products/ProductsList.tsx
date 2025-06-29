@@ -162,20 +162,21 @@ export default function ProductsList({ initialProducts }: ProductsListProps) {
     }
   };
 
-  return (
-    <main
-      className="container mx-auto py-6 px-4"
-      style={{
-        background: "linear-gradient(to right, #fce97f, #f797a9)",
-        color: primaryColor,
-      }}
-    >
-      <Link href="/dashboard" className="text-muted-foreground hover:text-primary">
-        <FiArrowLeft size={20} />
-      </Link>
-      <h1 className="text-3xl font-bold mb-6">Gestion des produits</h1>
+return (
+  <main
+    className="container mx-auto py-6 px-4"
+    style={{
+      background: "linear-gradient(to bottom, #61D6A6, #393785)",
+      color: primaryColor,
+    }}
+  >
+    <Link href="/dashboard" className="text-muted-foreground hover:text-primary">
+      <FiArrowLeft size={20} />
+    </Link>
+    <h1 className="text-3xl font-bold mb-6 text-white">Gestion des produits</h1>
 
-      {error && <ErrorAlert message={error} onClose={clearError} />}
+    {error && <ErrorAlert message={error} onClose={clearError} />}
+
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Formulaire d'ajout */}
@@ -244,7 +245,7 @@ export default function ProductsList({ initialProducts }: ProductsListProps) {
         </Card>
 
         {/* Statistiques */}
-        <Card className="border-2" style={{ borderColor: darkAccent, backgroundColor: lightAccent }}>
+        <Card className="border-2" style={{ borderColor: darkAccent, backgroundColor: "rgba(255,255,255,0.2)"}}>
           <CardHeader className="rounded-t-lg" style={{ backgroundColor: darkAccent }}>
             <CardTitle style={{ color: 'white' }}>Statistiques</CardTitle>
           </CardHeader>
@@ -256,7 +257,7 @@ export default function ProductsList({ initialProducts }: ProductsListProps) {
               </p>
             </div>
 
-            <div className="h-[300px] p-4 rounded-lg shadow-sm border-2" style={{ borderColor: accentColor, backgroundColor: 'white' }}>
+            <div className="h-[300px] p-4 rounded-lg shadow-sm border-2" style={{ borderColor: accentColor, backgroundColor: "rgba(255,255,255,0.2)"}}>
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={chartData}>
                   <CartesianGrid strokeDasharray="3 3" />

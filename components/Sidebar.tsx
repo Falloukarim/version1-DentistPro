@@ -17,49 +17,18 @@ interface SidebarProps {
 const Sidebar = ({ onClose }: SidebarProps) => {
   const pathname = usePathname();
   const { user, isLoaded } = useUser();
-  const { clinic } = useClinic(); // Utilisation du contexte Clinic
-  // Icônes avec couleurs spécifiques
+  const { clinic } = useClinic();
+
   const menuItems = [
-    { 
-      path: "/dashboard", 
-      name: "Tableau de Bord", 
-      icon: <FaHome />,
-      color: "text-blue-500",
-      activeColor: "text-blue-600"
-    },
-    { 
-      path: "/consultations", 
-      name: "Consultations", 
-      icon: <FaUsers />,
-      color: "text-green-500",
-      activeColor: "text-green-600"
-    },
-    { 
-      path: "/appointments", 
-      name: "Rendez-vous", 
-      icon: <FaCalendarAlt />,
-      color: "text-purple-500",
-      activeColor: "text-purple-600"
-    },
-    { 
-      path: "/payments", 
-      name: "Paiements", 
-      icon: <FaMoneyBillWave />,
-      color: "text-yellow-500",
-      activeColor: "text-yellow-600"
-    },
-    { 
-      path: "/products", 
-      name: "Produits", 
-      icon: <FaBox />,
-      color: "text-red-500",
-      activeColor: "text-red-600"
-    }
+    { path: "/dashboard", name: "Tableau de Bord", icon: <FaHome /> },
+    { path: "/consultations", name: "Consultations", icon: <FaUsers /> },
+    { path: "/appointments", name: "Rendez-vous", icon: <FaCalendarAlt /> },
+    { path: "/payments", name: "Paiements", icon: <FaMoneyBillWave /> },
+    { path: "/products", name: "Produits", icon: <FaBox /> }
   ];
 
   const isSuperAdmin = isLoaded && user?.publicMetadata?.role === 'SUPER_ADMIN';
 
-  // Variantes d'animation pour Framer Motion
   const iconVariants = {
     hover: {
       rotate: [0, 10, -10, 5, -5, 0],
@@ -67,7 +36,6 @@ const Sidebar = ({ onClose }: SidebarProps) => {
     }
   };
 
-  // Variantes pour l'effet de survol du texte
   const textVariants = {
     hover: {
       x: 5,
@@ -81,14 +49,14 @@ const Sidebar = ({ onClose }: SidebarProps) => {
   };
 
   return (
-    <div className="w-64 bg-card border-r border-border h-full flex flex-col z-50 shadow-lg">
+    <div className="w-64 bg-custom-gradient h-full flex flex-col z-50 shadow-lg">
       {/* Header */}
       <div className="p-4 border-b border-border flex justify-between items-center">
         <ClinicLogo size={80} className="mb-4" />
         {onClose && (
           <button 
             onClick={onClose}
-            className="md:hidden text-muted-foreground hover:text-foreground transition"
+            className="md:hidden text-white hover:text-gray-200 transition"
             aria-label="Fermer le menu"
           >
             <FaTimes />
@@ -106,15 +74,15 @@ const Sidebar = ({ onClose }: SidebarProps) => {
                 onClick={onClose}
                 className={`flex items-center p-3 rounded-lg transition-all group ${
                   pathname === item.path
-                    ? "bg-primary/10 text-primary font-medium border border-primary/20"
-                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                    ? "bg-white/10 text-white font-medium border border-white/20"
+                    : "text-white hover:bg-white/10"
                 }`}
               >
                 <motion.span
                   className={`mr-3 p-2 rounded-lg ${
                     pathname === item.path 
-                      ? `bg-primary ${item.activeColor}`
-                      : `bg-accent ${item.color}`
+                      ? "bg-white/20 text-white"
+                      : "bg-white/10 text-white"
                   }`}
                   variants={iconVariants}
                   whileHover="hover"
@@ -130,15 +98,15 @@ const Sidebar = ({ onClose }: SidebarProps) => {
                   <span className="absolute left-0 bottom-0 w-0 h-0.5 bg-current transition-all duration-300 group-hover:w-full"></span>
                 </motion.span>
                 {pathname === item.path && (
-                  <span className="ml-auto w-2 h-2 bg-primary rounded-full animate-pulse"></span>
+                  <span className="ml-auto w-2 h-2 bg-white rounded-full animate-pulse"></span>
                 )}
               </Link>
             </li>
           ))}
-          
+
           {isSuperAdmin && (
             <>
-              <li className="mt-6 mb-2 px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              <li className="mt-6 mb-2 px-3 text-xs font-semibold text-white uppercase tracking-wider">
                 Administration
               </li>
               <li>
@@ -146,15 +114,15 @@ const Sidebar = ({ onClose }: SidebarProps) => {
                   href="/admin/super-admin" 
                   className={`flex items-center p-3 rounded-lg transition-all group ${
                     pathname.startsWith("/admin/super-admin")
-                      ? "bg-primary/10 text-primary font-medium border border-primary/20"
-                      : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                      ? "bg-white/10 text-white font-medium border border-white/20"
+                      : "text-white hover:bg-white/10"
                   }`}
                 >
                   <motion.span
                     className={`mr-3 p-2 rounded-lg ${
                       pathname.startsWith("/admin/super-admin") 
-                        ? "bg-primary text-indigo-600"
-                        : "bg-accent text-indigo-500"
+                        ? "bg-white/20 text-white"
+                        : "bg-white/10 text-white"
                     }`}
                     variants={iconVariants}
                     whileHover="hover"
@@ -174,15 +142,15 @@ const Sidebar = ({ onClose }: SidebarProps) => {
                   href="/admin/clinics" 
                   className={`flex items-center p-3 rounded-lg transition-all group ${
                     pathname.startsWith("/admin/clinics")
-                      ? "bg-primary/10 text-primary font-medium border border-primary/20"
-                      : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                      ? "bg-white/10 text-white font-medium border border-white/20"
+                      : "text-white hover:bg-white/10"
                   }`}
                 >
                   <motion.span
                     className={`mr-3 p-2 rounded-lg ${
                       pathname.startsWith("/admin/clinics") 
-                        ? "bg-primary text-cyan-600"
-                        : "bg-accent text-cyan-500"
+                        ? "bg-white/20 text-white"
+                        : "bg-white/10 text-white"
                     }`}
                     variants={iconVariants}
                     whileHover="hover"
@@ -220,11 +188,11 @@ const Sidebar = ({ onClose }: SidebarProps) => {
                 }}
               />
             </motion.div>
-            <span className="text-sm text-foreground">Mon Profil</span>
+            <span className="text-sm text-white">Mon Profil</span>
           </div>
           <ThemeToggle />
         </div>
-        <div className="text-xs text-muted-foreground text-center">
+        <div className="text-xs text-white text-center">
           v1.0.0
         </div>
       </div>
