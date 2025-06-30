@@ -52,7 +52,6 @@ const Sidebar = ({ onClose }: SidebarProps) => {
     <div className="w-64 bg-custom-gradient h-full flex flex-col z-50 shadow-lg">
       {/* Header */}
       <div className="p-4 border-b border-border flex justify-between items-center">
-        <ClinicLogo size={80} className="mb-4" />
         {onClose && (
           <button 
             onClick={onClose}

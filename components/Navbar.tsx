@@ -5,6 +5,7 @@ import AdminLinks from "./AdminLinks";
 import Link from "next/link";
 import { LogoutButton } from "./LogoutButton"; // Importez le nouveau composant
 import { HiOutlineOfficeBuilding } from 'react-icons/hi';
+import ClinicLogo from "./ClinicLogo";
 
 interface NavbarProps {
   onMenuToggle?: () => void;
@@ -38,11 +39,11 @@ const Navbar = ({ onMenuToggle, userRole }: NavbarProps) => {
         )}
         <div className="flex items-center gap-3">
           <AdminLinks />
-<HiOutlineOfficeBuilding className="text-primary text-xl" />
           <h1 className="text-lg md:text-xl font-semibold text-foreground">
-            <span className="font-light">Cabinet</span> Medical
           </h1>
         </div>
+          <ClinicLogo size={80} className="mb-4" />
+
       </div>
       
       <div className="flex items-center gap-4">
