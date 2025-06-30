@@ -41,7 +41,7 @@ const Navbar = ({ onMenuToggle, userRole }: NavbarProps) => {
         </div>
       </div>
       <div className="flex items-center gap-4">
-                  <ClinicLogo size={40} className="mb-4 m-2 p-2" />
+           <ClinicLogo size={50} className="mb-4 m-2 p-2" />
       </div>
     </div>
   );
