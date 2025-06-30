@@ -38,12 +38,12 @@ export default async function ConsultationDetails({
 
   return (
     <Layout>
-      {/* Conteneur principal responsive */}
-      <div className="w-full bg-background dark:bg-gray-950 p-4">
-        {/* Contenu avec largeur maximale */}
-        <div className="max-w-7xl mx-auto">
+      {/* Conteneur principal scrollable avec hauteur fixe */}
+      <div className="fixed inset-0 overflow-y-auto bg-background dark:bg-gray-950">
+        {/* Contenu avec largeur maximale et padding adaptatif */}
+        <div className="max-w-7xl mx-auto px-4 py-6 sm:p-6 lg:p-8 min-h-full flex flex-col">
           
-          {/* En-tête */}
+          {/* En-tête avec disposition responsive */}
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
             <div className="flex flex-col gap-3 w-full">
               <Link href="/consultations" className="flex items-center text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 w-fit">
@@ -51,54 +51,56 @@ export default async function ConsultationDetails({
                 <span className="font-medium">Retour aux consultations</span>
               </Link>
               
-              <div className="flex flex-col sm:flex-row gap-3">
+              <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
                 <Link 
                   href={`/consultations/${consultation.id}/treatments/add`}
-                  className="flex items-center justify-center gap-2 bg-white hover:bg-gray-50 dark:bg-gray-900 dark:hover:bg-gray-800 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 border border-gray-200 dark:border-gray-800 px-4 py-2 text-sm rounded-lg transition-colors shadow-sm hover:shadow-md"
+                  className="flex items-center justify-center gap-2 bg-white hover:bg-gray-50 dark:bg-gray-900 dark:hover:bg-gray-800 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 border border-gray-200 dark:border-gray-800 px-4 py-2 text-sm rounded-lg transition-colors shadow-sm hover:shadow-md flex-1 sm:flex-none"
                 >
                   <FiPlus className="w-4 h-4" />
                   <span>Ajouter traitement</span>
                 </Link>
                 <Link
                   href={`/consultations/edit/${consultation.id}`}
-                  className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800 text-white px-4 py-2 text-sm rounded-lg transition-colors shadow-sm hover:shadow-md"
+                  className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800 text-white px-4 py-2 text-sm rounded-lg transition-colors shadow-sm hover:shadow-md flex-1 sm:flex-none"
                 >
                   <FiEdit className="w-4 h-4" />
                   <span>Modifier la consultation</span>
                 </Link>
               </div>
               
-              <h1 className="text-xl md:text-2xl font-bold text-gray-800 dark:text-white flex flex-wrap items-center">
-                <FiUser className="mr-3 text-blue-500 dark:text-blue-400" />
-                {patientName}
+              <h1 className="text-xl md:text-2xl font-bold text-gray-800 dark:text-white flex flex-col sm:flex-row items-baseline gap-2">
+                <span className="flex items-center">
+                  <FiUser className="mr-3 text-blue-500 dark:text-blue-400" />
+                  {patientName}
+                </span>
                 {patientAge && (
-                  <span className="text-gray-500 dark:text-gray-400 text-sm ml-3">({patientAge} ans)</span>
+                  <span className="text-gray-500 dark:text-gray-400 text-sm">({patientAge} ans)</span>
                 )}
               </h1>
             </div>
           </div>
 
-          {/* Grille principale responsive */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Grille principale responsive avec colonnes qui s'empilent sur mobile */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1">
             
-            {/* Colonne de gauche (1/3) */}
-            <div className="space-y-6">
-              {/* Carte Info Patient */}
-              <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-4 shadow-sm">
+            {/* Colonne de gauche (1/3) - s'empile en haut sur mobile */}
+            <div className="space-y-6 lg:col-span-1">
+              {/* Carte Info Patient avec largeur fluide */}
+              <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-4 sm:p-5 shadow-sm w-full">
                 <h2 className="text-lg font-semibold mb-3 text-gray-800 dark:text-white flex items-center">
                   <FiUser className="mr-2 text-blue-500 dark:text-blue-400" />
                   Informations patient
                 </h2>
                 <div className="space-y-3">
                   <div className="flex items-start">
-                    <FiPhone className="mt-0.5 mr-2 text-gray-500 dark:text-gray-400" />
-                    <div>
+                    <FiPhone className="mt-0.5 mr-2 text-gray-500 dark:text-gray-400 min-w-5" />
+                    <div className="overflow-hidden">
                       <p className="text-sm text-gray-500 dark:text-gray-400">Téléphone</p>
                       <p className="font-medium dark:text-white break-all">{patientPhone}</p>
                     </div>
                   </div>
                   <div className="flex items-start">
-                    <FiCalendar className="mt-0.5 mr-2 text-gray-500 dark:text-gray-400" />
+                    <FiCalendar className="mt-0.5 mr-2 text-gray-500 dark:text-gray-400 min-w-5" />
                     <div>
                       <p className="text-sm text-gray-500 dark:text-gray-400">Date</p>
                       <p className="font-medium dark:text-white">
@@ -112,8 +114,8 @@ export default async function ConsultationDetails({
                     </div>
                   </div>
                   <div className="flex items-start">
-                    <FiMapPin className="mt-0.5 mr-2 text-gray-500 dark:text-gray-400" />
-                    <div>
+                    <FiMapPin className="mt-0.5 mr-2 text-gray-500 dark:text-gray-400 min-w-5" />
+                    <div className="overflow-hidden">
                       <p className="text-sm text-gray-500 dark:text-gray-400">Adresse</p>
                       <p className="font-medium dark:text-white break-words">{patientAddress}</p>
                     </div>
@@ -121,8 +123,8 @@ export default async function ConsultationDetails({
                 </div>
               </div>
 
-              {/* Carte Paiement */}
-              <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-4 shadow-sm">
+              {/* Carte Paiement avec largeur fluide */}
+              <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-4 sm:p-5 shadow-sm w-full">
                 <h2 className="text-lg font-semibold mb-3 text-gray-800 dark:text-white flex items-center">
                   <FiDollarSign className="mr-2 text-green-500 dark:text-green-400" />
                   Statut de paiement
@@ -184,10 +186,10 @@ export default async function ConsultationDetails({
               </div>
             </div>
 
-            {/* Colonne de droite (2/3) */}
+            {/* Colonne de droite (2/3) - prend toute la largeur sur mobile */}
             <div className="lg:col-span-2 space-y-6">
-              {/* Section Traitements */}
-              <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-4 shadow-sm">
+              {/* Section Traitements avec défilement horizontal sur petits écrans */}
+              <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-4 sm:p-5 shadow-sm">
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
                   <h2 className="text-lg font-semibold text-gray-800 dark:text-white flex items-center">
                     <FiPlus className="mr-2 text-blue-500 dark:text-blue-400" />
@@ -206,10 +208,10 @@ export default async function ConsultationDetails({
                     <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-800">
                       <thead className="bg-gray-50 dark:bg-gray-800">
                         <tr>
-                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Type</th>
-                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Description</th>
-                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Statut</th>
-                          <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Montant</th>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase whitespace-nowrap">Type</th>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase whitespace-nowrap">Description</th>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase whitespace-nowrap">Statut</th>
+                          <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase whitespace-nowrap">Montant</th>
                         </tr>
                       </thead>
                       <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-800">
@@ -218,7 +220,7 @@ export default async function ConsultationDetails({
                             <td className="px-3 py-3 whitespace-nowrap font-medium dark:text-white">
                               {treatment.type}
                             </td>
-                            <td className="px-3 py-3 text-gray-500 dark:text-gray-400 break-words max-w-[200px]">
+                            <td className="px-3 py-3 text-gray-500 dark:text-gray-400 break-words min-w-[120px] max-w-[200px] 2xl:max-w-[300px]">
                               {treatment.description || '-'}
                             </td>
                             <td className="px-3 py-3 whitespace-nowrap">
@@ -231,7 +233,7 @@ export default async function ConsultationDetails({
                                  treatment.status === 'PARTIAL' ? 'Partiel' : 'Non payé'}
                               </span>
                               {treatment.status === 'PARTIAL' && (
-                                <span className="ml-2 text-xs text-gray-500 dark:text-gray-400">
+                                <span className="ml-2 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
                                   {treatment.paidAmount?.toLocaleString() || '0'} / {treatment.amount?.toLocaleString() || '0'} FCFA
                                 </span>
                               )}
@@ -258,8 +260,8 @@ export default async function ConsultationDetails({
                 )}
               </div>
 
-              {/* Section Notes */}
-              <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-4 shadow-sm">
+              {/* Section Notes avec espacement adaptatif */}
+              <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-4 sm:p-5 shadow-sm">
                 <h2 className="text-lg font-semibold mb-4 text-gray-800 dark:text-white flex items-center">
                   <FiEdit className="mr-2 text-purple-500 dark:text-purple-400" />
                   Notes de consultation
@@ -272,7 +274,7 @@ export default async function ConsultationDetails({
                     editable={notes?.assistantNote !== null}
                     title="Note de l'assistant"
                     author={notes?.assistantName || 'Assistant'}
-                    className="border border-gray-100 dark:border-gray-800 rounded-lg p-3 bg-gray-50/50 dark:bg-gray-800/30"
+                    className="border border-gray-100 dark:border-gray-800 rounded-lg p-3 sm:p-4 bg-gray-50/50 dark:bg-gray-800/30"
                   />
 
                   {notes?.dentistNote !== null && notes?.dentistNote !== undefined && (
@@ -283,7 +285,7 @@ export default async function ConsultationDetails({
                       editable={notes.dentistNote !== null}
                       title="Note du dentiste"
                       author={notes.dentistName || 'Dentiste'}
-                      className="border border-gray-100 dark:border-gray-800 rounded-lg p-3 bg-gray-50/50 dark:bg-gray-800/30"
+                      className="border border-gray-100 dark:border-gray-800 rounded-lg p-3 sm:p-4 bg-gray-50/50 dark:bg-gray-800/30"
                     />
                   )}
 
