@@ -168,9 +168,9 @@ const Sidebar = ({ onClose }: SidebarProps) => {
           )}
         </ul>
       </nav>
-
       {/* Footer */}
       <div className="p-4 border-t border-border space-y-4">
+        
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <motion.div
@@ -187,6 +187,7 @@ const Sidebar = ({ onClose }: SidebarProps) => {
                 }}
               />
             </motion.div>
+
             <span className="text-sm text-white">Mon Profil</span>
           </div>
           <ThemeToggle />
