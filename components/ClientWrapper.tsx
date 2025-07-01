@@ -6,7 +6,6 @@ import { useEffect } from "react";
 import { useNavigation } from "./ui/NavigationContext";
 import LoadingSpinner from "./ui/LoadingSpinner";
 import { OfflineUI } from "./offline/OfflineUI";
-import { NetworkStatusBadge } from "./offline/NetworkStatusBadge";
 
 type Clinic = {
   id: string;
@@ -49,8 +48,6 @@ export default function ClientWrapper({ children, clinic }: ClientWrapperProps) 
     <>
       {/* Composants Offline interactifs */}
       <OfflineUI onRetry={() => window.location.reload()} />
-      <NetworkStatusBadge />
-
       <AnimatePresence mode="wait">
         {/* Overlay de chargement */}
         {isNavigating && (
