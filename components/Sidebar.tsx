@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { FaHome, FaUsers, FaCalendarAlt, FaMoneyBillWave, FaBox, FaTooth, FaClinicMedical, FaTimes } from "react-icons/fa";
+import { FaHome, FaUsers, FaCalendarAlt, FaMoneyBillWave, FaBox, FaClinicMedical, FaTimes } from "react-icons/fa";
 import { UserButton, useUser } from "@clerk/nextjs";
 import { ThemeToggle } from "./ui/ThemeToggle";
 import { FiShield } from "react-icons/fi";
@@ -12,9 +12,10 @@ import { useClinic } from "./ClinicThemeProvider";
 
 interface SidebarProps {
   onClose?: () => void;
+  isMobile?: boolean;
 }
 
-const Sidebar = ({ onClose }: SidebarProps) => {
+const Sidebar = ({ onClose, isMobile }: SidebarProps) => {
   const pathname = usePathname();
   const { user, isLoaded } = useUser();
   const { clinic } = useClinic();
@@ -48,11 +49,26 @@ const Sidebar = ({ onClose }: SidebarProps) => {
     }
   };
 
+  const handleLinkClick = (e: React.MouseEvent, path: string) => {
+    if (onClose) {
+      e.preventDefault();
+      onClose();
+      // Utilise setTimeout pour permettre l'animation de fermeture
+      setTimeout(() => {
+        window.location.href = path;
+      }, 300);
+    }
+  };
+
   return (
-    <div className="w-64 bg-custom-gradient h-full flex flex-col z-50 shadow-lg">
+    <div 
+      className="w-64 bg-custom-gradient h-full flex flex-col z-50 shadow-lg"
+      onClick={(e) => e.stopPropagation()} // Empêche la propagation vers l'overlay
+    >
       {/* Header */}
       <div className="p-4 border-b border-border flex justify-between items-center">
-        {onClose && (
+        <ClinicLogo size={80} className="mb-4" />
+        {isMobile && onClose && ( // ✅ affiche le bouton uniquement sur mobile
           <button 
             onClick={onClose}
             className="md:hidden text-white hover:text-gray-200 transition"
@@ -70,7 +86,7 @@ const Sidebar = ({ onClose }: SidebarProps) => {
             <li key={item.path}>
               <Link
                 href={item.path}
-                onClick={onClose}
+                onClick={(e) => handleLinkClick(e, item.path)}
                 className={`flex items-center p-3 rounded-lg transition-all group ${
                   pathname === item.path
                     ? "bg-white/10 text-white font-medium border border-white/20"
@@ -111,6 +127,7 @@ const Sidebar = ({ onClose }: SidebarProps) => {
               <li>
                 <Link 
                   href="/admin/super-admin" 
+                  onClick={(e) => handleLinkClick(e, "/admin/super-admin")}
                   className={`flex items-center p-3 rounded-lg transition-all group ${
                     pathname.startsWith("/admin/super-admin")
                       ? "bg-white/10 text-white font-medium border border-white/20"
@@ -139,6 +156,7 @@ const Sidebar = ({ onClose }: SidebarProps) => {
               <li>
                 <Link 
                   href="/admin/clinics" 
+                  onClick={(e) => handleLinkClick(e, "/admin/clinics")}
                   className={`flex items-center p-3 rounded-lg transition-all group ${
                     pathname.startsWith("/admin/clinics")
                       ? "bg-white/10 text-white font-medium border border-white/20"
@@ -168,9 +186,9 @@ const Sidebar = ({ onClose }: SidebarProps) => {
           )}
         </ul>
       </nav>
+
       {/* Footer */}
       <div className="p-4 border-t border-border space-y-4">
-        
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <motion.div
@@ -187,7 +205,6 @@ const Sidebar = ({ onClose }: SidebarProps) => {
                 }}
               />
             </motion.div>
-
             <span className="text-sm text-white">Mon Profil</span>
           </div>
           <ThemeToggle />
