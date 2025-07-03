@@ -1,17 +1,14 @@
 import React from "react";
-import { FaBars, FaClinicMedical } from "react-icons/fa";
 import { ThemeToggle } from "./ui/ThemeToggle";
 import AdminLinks from "./AdminLinks";
 import Link from "next/link";
-import { LogoutButton } from "./LogoutButton"; // Importez le nouveau composant
-import { HiOutlineOfficeBuilding } from 'react-icons/hi';
 import ClinicLogo from "./ClinicLogo";
+import { UserButton } from "@clerk/nextjs";
 
 interface NavbarProps {
   onMenuToggle?: () => void;
   userRole: string;
   userId?: string;
-  // Retirez onLogout des props
 }
 
 const Navbar = ({ onMenuToggle, userRole }: NavbarProps) => {
@@ -41,12 +38,22 @@ const Navbar = ({ onMenuToggle, userRole }: NavbarProps) => {
             <span className="font-light">Cabinet</span> Medical
           </h1>
         </div>
-          <ClinicLogo />
+        <ClinicLogo />
       </div>
       
       <div className="flex items-center gap-4">
         <ThemeToggle />
-        <LogoutButton /> {/* Utilisez le nouveau composant ici */}
+        <div className="flex items-center gap-2">
+          <UserButton 
+            afterSignOutUrl="/"
+            appearance={{
+              elements: {
+                avatarBox: "w-8 h-8 border border-border shadow-sm",
+                userButtonPopoverCard: "shadow-xl bg-background"
+              }
+            }}
+          />
+        </div>
       </div>
     </div>
   );
