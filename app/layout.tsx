@@ -57,7 +57,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         }}
       >
         <html lang="fr" className={`${inter.className} h-full`} suppressHydrationWarning>
-          <body className="h-full bg-background text-foreground">
+          <body className="h-full bg-custom-gradient text-foreground">
             <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
               <ClinicThemeProvider clinic={clinic}>
                 <NavigationProvider>

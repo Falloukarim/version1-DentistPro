@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button"; // Import ShadCN Button
 import { Card, CardHeader, CardContent } from "@/components/ui/card"; // Import ShadCN Card
+import SyncUser from '../components/SyncUser';
 
 export default function HomePage() {
   return (

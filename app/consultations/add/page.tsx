@@ -1,5 +1,5 @@
 'use client';
-import { FiUser, FiPhone, FiCalendar, FiMapPin, FiSave, FiX, FiPrinter, FiDollarSign } from 'react-icons/fi';
+import { FiUser,FiArrowLeft, FiPhone, FiCalendar, FiMapPin, FiSave, FiX, FiPrinter, FiDollarSign } from 'react-icons/fi';
 import Link from 'next/link';
 import { useActionState } from 'react';
 import { useFormStatus } from 'react-dom';
@@ -70,6 +70,9 @@ export default function NewConsultationPage() {
   return (
     <div className="max-w-2xl mx-auto p-6">
       <div className="bg-card rounded-xl shadow-sm border overflow-hidden">
+         <Link href="/dashboard" className="text-muted-foreground hover:text-primary">
+      <FiArrowLeft size={20} />
+    </Link>
         <div className="p-6 border-b">
           <h2 className="text-2xl font-bold text-foreground flex items-center">
             <FiUser className="mr-2 text-primary" />

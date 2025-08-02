@@ -2,11 +2,31 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { FiUser, FiPhone, FiCalendar, FiInfo, FiChevronDown, FiArrowLeft } from 'react-icons/fi';
+import { 
+  FiUser, 
+  FiPhone, 
+  FiCalendar, 
+  FiInfo, 
+  FiChevronDown, 
+  FiArrowLeft,
+  FiClock
+} from 'react-icons/fi';
 import { addAppointment, fetchConsultations } from '../action';
 import type { Consultation } from '@prisma/client';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
+
+// Palette de couleurs moderne
+const colors = {
+  primary: '#4F46E5', // Violet indigo
+  secondary: '#10B981', // Vert émeraude
+  accent: '#6366F1', // Violet doux
+  background: '#F9FAFB', // Gris très clair
+  text: '#111827', // Gris foncé
+  lightText: '#6B7280', // Gris moyen
+  border: '#E5E7EB', // Gris clair
+  white: '#FFFFFF'
+};
 
 export default function AddAppointmentForm() {
   const router = useRouter();
@@ -68,12 +88,11 @@ export default function AddAppointmentForm() {
       
       if (result?.success) {
         router.push('/appointments');
-        router.refresh(); // Pour s'assurer que les données sont à jour
+        router.refresh();
       }
     } catch (error) {
       console.error("Erreur:", error);
       
-      // Gestion des erreurs spécifiques
       if (error instanceof Error) {
         switch (error.message) {
           case "Aucune clinique assignée.":
@@ -94,113 +113,232 @@ export default function AddAppointmentForm() {
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+        <div 
+          className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2"
+          style={{ borderColor: colors.primary }}
+        ></div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-2xl mx-auto bg-card rounded-lg shadow-md p-6 border">
-      <div className="flex items-center gap-3 mb-6">
-        <Button asChild variant="ghost" size="icon">
+    <div 
+      className="min-h-screen p-4 sm:p-6"
+      style={{ backgroundColor: colors.background }}
+    >
+      <div className="max-w-2xl mx-auto">
+        {/* En-tête */}
+        <div className="flex items-center gap-4 mb-6">
           <Link href="/appointments">
-            <FiArrowLeft size={20} />
-          </Link>
-        </Button>
-        <h1 className="text-2xl font-bold text-foreground">Nouveau Rendez-vous</h1>
-      </div>
-      
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label className="block text-sm font-medium text-foreground mb-1">
-            Sélectionner une consultation
-          </label>
-          <div className="relative">
-            <select
-              name="consultationId"
-              value={formData.consultationId}
-              onChange={handleConsultationChange}
-              className="w-full p-2 border rounded-md appearance-none pr-8 bg-background"
-              required
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="hover:bg-gray-100"
+              style={{ color: colors.primary }}
             >
-              <option value="">Sélectionnez une consultation</option>
-              {consultations.map(consultation => (
-                <option key={consultation.id} value={consultation.id}>
-                  {consultation.patientName} - {new Date(consultation.createdAt).toLocaleDateString('fr-FR')}
-                </option>
-              ))}
-            </select>
-            <FiChevronDown className="absolute right-3 top-3 text-muted-foreground" />
-          </div>
+              <FiArrowLeft size={20} />
+            </Button>
+          </Link>
+          <h1 
+            className="text-2xl font-bold"
+            style={{ color: colors.text }}
+          >
+            Nouveau Rendez-vous
+          </h1>
         </div>
-
-        {selectedConsultation && (
-          <div className="bg-accent p-4 rounded-md">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-              <div>
-                <label className="block text-sm font-medium text-muted-foreground mb-1 flex items-center">
-                  <FiUser className="mr-2" /> Nom du patient
-                </label>
-                <p className="text-foreground">{selectedConsultation.patientName}</p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-muted-foreground mb-1 flex items-center">
-                  <FiPhone className="mr-2" /> Téléphone
-                </label>
-                <p className="text-foreground">{selectedConsultation.patientPhone}</p>
+        
+        {/* Carte du formulaire */}
+        <div 
+          className="bg-white rounded-xl shadow-sm p-6"
+          style={{ borderColor: colors.border, borderWidth: '1px' }}
+        >
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Sélection de consultation */}
+            <div className="space-y-2">
+              <label 
+                className="block text-sm font-medium"
+                style={{ color: colors.text }}
+              >
+                Consultation associée
+              </label>
+              <div className="relative">
+                <select
+                  name="consultationId"
+                  value={formData.consultationId}
+                  onChange={handleConsultationChange}
+                  className="w-full p-3 border rounded-lg appearance-none pr-10 focus:ring-2 focus:ring-primary focus:border-transparent"
+                  style={{ 
+                    borderColor: colors.border,
+                    backgroundColor: colors.white
+                  }}
+                  required
+                >
+                  <option value="">Sélectionnez une consultation</option>
+                  {consultations.map(consultation => (
+                    <option key={consultation.id} value={consultation.id}>
+                      {consultation.patientName} - {new Date(consultation.createdAt).toLocaleDateString('fr-FR')}
+                    </option>
+                  ))}
+                </select>
+                <FiChevronDown 
+                  className="absolute right-3 top-3.5"
+                  style={{ color: colors.lightText }}
+                />
               </div>
             </div>
-          </div>
-        )}
 
-        <div>
-          <label className="block text-sm font-medium text-foreground mb-1 flex items-center">
-            <FiCalendar className="mr-2" /> Date et heure
-          </label>
-          <input
-            type="datetime-local"
-            name="date"
-            value={formData.date}
-            onChange={handleChange}
-            className="w-full p-2 border rounded-md bg-background"
-            required
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-foreground mb-1 flex items-center">
-            <FiInfo className="mr-2" /> Motif du rendez-vous
-          </label>
-          <textarea
-            name="reason"
-            value={formData.reason}
-            onChange={handleChange}
-            className="w-full p-2 border rounded-md bg-background"
-            rows={3}
-            required
-          />
-        </div>
-
-        <div className="flex justify-end gap-3 pt-4">
-          <Button
-            type="button"
-            onClick={() => router.push('/appointments')}
-            variant="outline"
-          >
-            Annuler
-          </Button>
-          <Button type="submit" disabled={submitting}>
-            {submitting ? (
-              <span className="flex items-center gap-2">
-                <span className="inline-block h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-                Enregistrement...
-              </span>
-            ) : (
-              'Enregistrer le rendez-vous'
+            {/* Détails du patient */}
+            {selectedConsultation && (
+              <div 
+                className="p-4 rounded-lg"
+                style={{ 
+                  backgroundColor: colors.background,
+                  borderColor: colors.border,
+                  borderWidth: '1px'
+                }}
+              >
+                <h3 
+                  className="text-sm font-medium mb-3"
+                  style={{ color: colors.lightText }}
+                >
+                  Informations du patient
+                </h3>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <FiUser 
+                        size={16} 
+                        style={{ color: colors.lightText }} 
+                      />
+                      <span 
+                        className="text-xs"
+                        style={{ color: colors.lightText }}
+                      >
+                        Nom complet
+                      </span>
+                    </div>
+                    <p style={{ color: colors.text }}>
+                      {selectedConsultation.patientName}
+                    </p>
+                  </div>
+                  
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <FiPhone 
+                        size={16} 
+                        style={{ color: colors.lightText }} 
+                      />
+                      <span 
+                        className="text-xs"
+                        style={{ color: colors.lightText }}
+                      >
+                        Téléphone
+                      </span>
+                    </div>
+                    <p style={{ color: colors.text }}>
+                      {selectedConsultation.patientPhone}
+                    </p>
+                  </div>
+                </div>
+              </div>
             )}
-          </Button>
+
+            {/* Date et heure */}
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <FiCalendar 
+                  size={18} 
+                  style={{ color: colors.text }} 
+                />
+                <label 
+                  className="block text-sm font-medium"
+                  style={{ color: colors.text }}
+                >
+                  Date et heure du rendez-vous
+                </label>
+              </div>
+              <input
+                type="datetime-local"
+                name="date"
+                value={formData.date}
+                onChange={handleChange}
+                className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                style={{ 
+                  borderColor: colors.border,
+                  backgroundColor: colors.white
+                }}
+                required
+              />
+            </div>
+
+            {/* Motif du rendez-vous */}
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <FiInfo 
+                  size={18} 
+                  style={{ color: colors.text }} 
+                />
+                <label 
+                  className="block text-sm font-medium"
+                  style={{ color: colors.text }}
+                >
+                  Motif du rendez-vous
+                </label>
+              </div>
+              <textarea
+                name="reason"
+                value={formData.reason}
+                onChange={handleChange}
+                className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                style={{ 
+                  borderColor: colors.border,
+                  backgroundColor: colors.white
+                }}
+                rows={4}
+                required
+                placeholder="Décrivez la raison de ce rendez-vous..."
+              />
+            </div>
+
+            {/* Boutons d'action */}
+            <div className="flex justify-end gap-3 pt-4">
+              <Button
+                type="button"
+                onClick={() => router.push('/appointments')}
+                variant="outline"
+                className="hover:bg-gray-50"
+                style={{ 
+                  borderColor: colors.border,
+                  color: colors.text
+                }}
+              >
+                Annuler
+              </Button>
+              <Button 
+                type="submit" 
+                disabled={submitting}
+                className="hover:bg-primary/90"
+                style={{ backgroundColor: colors.primary }}
+              >
+                {submitting ? (
+                  <span className="flex items-center gap-2">
+                    <span 
+                      className="inline-block h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin"
+                    ></span>
+                    Enregistrement...
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-2">
+                    <FiClock size={16} />
+                    Planifier le rendez-vous
+                  </span>
+                )}
+              </Button>
+            </div>
+          </form>
         </div>
-      </form>
+      </div>
     </div>
   );
 }
