@@ -396,7 +396,7 @@ export default function ProductsList({ initialProducts }: ProductsListProps) {
                             size="sm"
                             onClick={() => handleRestockProduct(product.id)}
                             disabled={loading}
-                            className="bg-secondary hover:bg-secondary/90 text-white transition-colors"
+                            className="bg-secondary hover:bg-secondary/90 text-black transition-colors"
                           >
                             <FiRefreshCw className="mr-2" /> Réapprovisionner
                           </Button>

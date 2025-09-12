@@ -130,20 +130,6 @@ export default async function DashboardHome() {
     },
   });
 
-  // Vérification plus robuste
-  if (!user?.clinic?.subscription) {
-    redirect('/subscription');
-  }
-
-  const now = new Date();
-  const subscription = user.clinic.subscription;
-  
-  const isTrial = subscription?.status === 'trial' && subscription.trialEndsAt && subscription.trialEndsAt > now;
-  const isActive = subscription?.status === 'active' && subscription.endDate && subscription.endDate > now;
-  
-  if (!isTrial && !isActive) {
-    redirect('/subscription');
-  }
 
   return (
     <div className="w-full p-4 bg-custom-gradient min-h-screen">

@@ -1,5 +1,5 @@
 'use client';
-import { FiUser,FiArrowLeft, FiPhone, FiCalendar, FiMapPin, FiSave, FiX, FiPrinter, FiDollarSign } from 'react-icons/fi';
+import { FiUser, FiArrowLeft, FiPhone, FiCalendar, FiMapPin, FiSave, FiX, FiPrinter, FiDollarSign, FiBluetooth } from 'react-icons/fi';
 import Link from 'next/link';
 import { useActionState } from 'react';
 import { useFormStatus } from 'react-dom';
@@ -7,7 +7,15 @@ import { addConsultation, getAvailableDentists } from '../action';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-
+import { 
+  connectToPrinter, 
+  printConsultationTicket, 
+  disconnectPrinter, 
+  isPrinterConnected, 
+  getPrinterStatus,
+  PrinterStatus,
+  isBluetoothAvailable // Ajoutez cette importation
+} from '@/lib/bluetoothPrinter';
 function SubmitButton() {
   const { pending } = useFormStatus();
   
@@ -31,11 +39,17 @@ function SubmitButton() {
 export default function NewConsultationPage() {
   const [dentists, setDentists] = useState<Awaited<ReturnType<typeof getAvailableDentists>>>([]);
   const [state, formAction] = useActionState(addConsultation, null);
-  const [printUrl, setPrintUrl] = useState<string | null>(null);
   const [isClient, setIsClient] = useState(false);
   const router = useRouter();
   const [phoneError, setPhoneError] = useState('');
   const [consultationFee, setConsultationFee] = useState(3000);
+    const [printerStatus, setPrinterStatus] = useState<PrinterStatus>({ 
+    isConnected: false, 
+    printerName: null,
+    device: null,
+    bluetoothAvailable: false
+  });
+  const [isConnecting, setIsConnecting] = useState(false);
 
   useEffect(() => {
     setIsClient(true);
@@ -48,14 +62,68 @@ export default function NewConsultationPage() {
       }
     };
     fetchDentists();
+    
+    // Vérifier la disponibilité Bluetooth
+    updatePrinterStatus();
   }, []);
 
-  useEffect(() => {
-    if (state?.success && state.id && isClient) {
-      const currentUrl = `${window.location.protocol}//${window.location.host}/print/${state.id}`;
-      setPrintUrl(`rawbt:${currentUrl}`);
+  const updatePrinterStatus = () => {
+    setPrinterStatus(getPrinterStatus());
+  };
+
+  const handleConnectPrinter = async () => {
+    if (!isBluetoothAvailable()) {
+      alert('API Bluetooth non disponible. Utilisez Chrome ou Edge sur Android/Windows.');
+      return;
     }
-  }, [state, isClient]);
+
+    setIsConnecting(true);
+    try {
+      await connectToPrinter();
+      updatePrinterStatus();
+    } catch (error) {
+      console.error('Failed to connect to printer:', error);
+      alert(`Erreur de connexion: ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
+    } finally {
+      setIsConnecting(false);
+    }
+  };
+
+
+  const handleDisconnectPrinter = () => {
+    disconnectPrinter();
+    updatePrinterStatus();
+  };
+
+  const handlePrintTicket = async () => {
+    if (!state?.success || !state.id) return;
+    
+    try {
+      // Fetch consultation details
+      const res = await fetch(`/api/consultations/${state.id}`);
+      if (!res.ok) throw new Error('Échec de récupération des données');
+      
+      const consultation = await res.json();
+      
+      // Print the ticket
+      await printConsultationTicket(
+        consultation.clinic,
+        {
+          date: consultation.date,
+          patientName: consultation.patientName,
+          patientPhone: consultation.patientPhone,
+          dentist: consultation.dentist,
+          amount: consultation.payments?.[0]?.amount || 0,
+          description: consultation.description
+        }
+      );
+      
+      alert('Ticket imprimé avec succès!');
+    } catch (error) {
+      console.error('Print error:', error);
+      alert(`Erreur d'impression: ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
+    }
+  };
 
   const validatePhone = (phone: string) => {
     const phoneRegex = /^(77|76|70|78|75)[0-9]{7}$/;
@@ -70,9 +138,9 @@ export default function NewConsultationPage() {
   return (
     <div className="max-w-2xl mx-auto p-6">
       <div className="bg-card rounded-xl shadow-sm border overflow-hidden">
-         <Link href="/dashboard" className="text-muted-foreground hover:text-primary">
-      <FiArrowLeft size={20} />
-    </Link>
+        <Link href="/dashboard" className="text-muted-foreground hover:text-primary">
+          <FiArrowLeft size={20} />
+        </Link>
         <div className="p-6 border-b">
           <h2 className="text-2xl font-bold text-foreground flex items-center">
             <FiUser className="mr-2 text-primary" />
@@ -81,6 +149,40 @@ export default function NewConsultationPage() {
         </div>
 
         <div className="p-6">
+        {/* Printer Status */}
+        <div className={`mb-6 p-4 rounded-lg flex items-center justify-between ${
+          !printerStatus.bluetoothAvailable ? 'bg-destructive/10 text-destructive' :
+          printerStatus.isConnected ? 'bg-success/10 text-success' : 'bg-muted'
+        }`}>
+          <div className="flex items-center">
+            <FiBluetooth className="mr-2" />
+            <span>
+              {!printerStatus.bluetoothAvailable 
+                ? 'Bluetooth non disponible (Chrome/Edge requis)'
+                : printerStatus.isConnected 
+                  ? `Imprimante: ${printerStatus.printerName || 'Connectée'}`
+                  : 'Imprimante non connectée'}
+            </span>
+          </div>
+          
+          {printerStatus.bluetoothAvailable && (
+            printerStatus.isConnected ? (
+              <Button variant="outline" size="sm" onClick={handleDisconnectPrinter}>
+                Déconnecter
+              </Button>
+            ) : (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleConnectPrinter}
+                disabled={isConnecting}
+              >
+                {isConnecting ? 'Connexion...' : 'Connecter imprimante'}
+              </Button>
+            )
+          )}
+        </div>
+
           {state?.error && (
             <div className="mb-6 p-4 bg-destructive/10 text-destructive rounded-lg border border-destructive/20">
               {state.error}
@@ -258,19 +360,14 @@ export default function NewConsultationPage() {
                   </Link>
                 </Button>
 
-                {printUrl && (
-                  <Button asChild>
-                    <a
-                      href={printUrl}
-                      className="flex items-center gap-2"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      <FiPrinter className="mr-2" />
-                      Imprimer le ticket
-                    </a>
-                  </Button>
-                )}
+                <Button 
+                  onClick={handlePrintTicket}
+                  disabled={!printerStatus.isConnected}
+                  className="flex items-center gap-2"
+                >
+                  <FiPrinter className="mr-2" />
+                  Imprimer le ticket
+                </Button>
 
                 <Button asChild variant="secondary">
                   <Link href={`/print/${state.id}`} target="_blank">
@@ -279,6 +376,12 @@ export default function NewConsultationPage() {
                   </Link>
                 </Button>
               </div>
+              
+              {!printerStatus.isConnected && (
+                <p className="mt-3 text-sm text-muted-foreground">
+                  Connectez une imprimante Bluetooth pour imprimer le ticket
+                </p>
+              )}
             </div>
           )}
         </div>

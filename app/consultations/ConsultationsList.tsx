@@ -219,7 +219,7 @@ export default function ConsultationsList({ consultations: initialConsultations 
           
           <Link
             href="/consultations/add"
-            className="flex items-center justify-center gap-2 bg-primary hover:bg-accent text-white px-4 py-2 rounded-lg transition-all shadow-sm"
+            className="flex items-center text-black justify-center gap-2 bg-primary hover:bg-accent text-white px-4 py-2 rounded-lg transition-all shadow-sm"
           >
             <FiPlusCircle className="text-lg" />
             <span>Nouvelle Consultation</span>

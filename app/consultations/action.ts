@@ -126,115 +126,107 @@ function toUpdateData(data: Partial<ConsultationInput>): UpdateData {
   }
   
   export async function addConsultation(
-    prevState: { error?: string; success?: boolean } | null,
-    formData: FormData | null
-  ) {
-    if (!formData) return prevState;
-  
-    try {
-      const { userId } = await auth();
-      if (!userId) throw new Error('Non autorisé');
-  
-      const user = await prisma.user.findUnique({
-        where: { clerkUserId: userId },
-        include: { clinic: true },
+  prevState: { error?: string; success?: boolean; id?: string } | null,
+  formData: FormData | null
+) {
+  if (!formData) return prevState;
+
+  try {
+    const { userId } = await auth();
+    if (!userId) throw new Error('Non autorisé');
+
+    const user = await prisma.user.findUnique({
+      where: { clerkUserId: userId },
+      include: { clinic: true },
+    });
+
+    if (!user) throw new Error('Utilisateur non trouvé');
+    if (!user.clinicId && user.role !== 'SUPER_ADMIN') {
+      throw new Error('Aucune clinique assignée');
+    }
+
+    const dentistId = formData.get('dentistId') as string;
+    if (!dentistId) throw new Error('Veuillez sélectionner un dentiste');
+
+    const patientName = formData.get('patientName') as string;
+    if (!patientName || patientName.trim().length < 2) {
+      throw new Error('Le nom du patient doit contenir au moins 2 caractères');
+    }
+
+    const patientPhone = formData.get('patientPhone') as string;
+    const phoneRegex = /^(77|76|70|78|75)[0-9]{7}$/;
+    if (!phoneRegex.test(patientPhone)) {
+      throw new Error('Numéro Sénégalais invalide');
+    }
+
+    const date = formData.get('date') as string;
+    if (!date) throw new Error('Veuillez sélectionner une date');
+
+    const isPaid = formData.get('isPaid') === 'true';
+    const consultationFee = Number(formData.get('consultationFee')) || 3000;
+
+    // Utilisation correcte de la transaction Prisma
+    const consultation = await prisma.$transaction(async (tx) => {
+      // Création de la consultation
+      const consultation = await tx.consultation.create({
+        data: {
+          patientName,
+          patientPhone,
+          patientAddress: formData.get('patientAddress') as string || null,
+          patientAge: formData.get('patientAge')
+            ? parseInt(formData.get('patientAge') as string)
+            : null,
+          patientGender: formData.get('patientGender') as string || null,
+          date: new Date(date),
+          description: formData.get('description') as string || null,
+          isPaid,
+          clinic: { connect: { id: user.clinicId! } },
+          assistant: { connect: { id: user.id } },
+          dentist: { connect: { id: dentistId } },
+          createdBy: { connect: { id: user.id } },
+        },
       });
-  
-      if (!user) throw new Error('Utilisateur non trouvé');
-      if (!user.clinicId && user.role !== 'SUPER_ADMIN') {
-        throw new Error('Aucune clinique assignée');
-      }
-  
-      const dentistId = formData.get('dentistId') as string;
-      if (!dentistId) throw new Error('Veuillez sélectionner un dentiste');
-  
-      const patientName = formData.get('patientName') as string;
-      if (!patientName || patientName.trim().length < 2) {
-        throw new Error('Le nom du patient doit contenir au moins 2 caractères');
-      }
-  
-      const patientPhone = formData.get('patientPhone') as string;
-      const phoneRegex = /^(77|76|70|78|75)[0-9]{7}$/;
-      if (!phoneRegex.test(patientPhone)) {
-        throw new Error('Numéro Sénégalais invalide');
-      }
-  
-      const date = formData.get('date') as string;
-      if (!date) throw new Error('Veuillez sélectionner une date');
-  
-      const isPaid = formData.get('isPaid') === 'true';
-      const consultationFee = Number(formData.get('consultationFee')) || 3000; // Récupérer le montant saisi
-  
-      const consultation = await prisma.$transaction(async (prisma: {
-          consultation: { create: (arg0: { data: { patientName: string; patientPhone: string; patientAddress: string | null; patientAge: number | null; patientGender: string | null; date: Date; description: string | null; isPaid: boolean; clinic: { connect: { id: any; }; }; assistant: { connect: { id: any; }; }; dentist: { connect: { id: string; }; }; createdBy: { connect: { id: any; }; }; }; }) => any; }; treatment: {
-            create: (arg0: {
-              data: {
-                type: string; amount: number; // Utiliser le montant saisi
-                paidAmount: number; remainingAmount: number; status: string; consultation: { connect: { id: any; }; }; clinic: { connect: { id: any; }; };
-              };
-            }) => any;
-          }; payment: { create: (arg0: { data: { amount: number; paymentMethod: string; paymentDate: Date; consultation: { connect: { id: any; }; }; treatment: { connect: { id: any; }; }; createdBy: { connect: { id: any; }; }; clinic: { connect: { id: any; }; }; }; }) => any; };
-        }) => {
-        // Création de la consultation
-        const consultation = await prisma.consultation.create({
+
+      // Création automatique d'un traitement de consultation
+      const treatment = await tx.treatment.create({
+        data: {
+          type: "Consultation",
+          amount: consultationFee,
+          paidAmount: isPaid ? consultationFee : 0,
+          remainingAmount: isPaid ? 0 : consultationFee,
+          status: isPaid ? "PAID" : "UNPAID",
+          consultation: { connect: { id: consultation.id } },
+          clinic: { connect: { id: user.clinicId! } }
+        }
+      });
+
+      if (isPaid) {
+        await tx.payment.create({
           data: {
-            patientName,
-            patientPhone,
-            patientAddress: formData.get('patientAddress') as string || null,
-            patientAge: formData.get('patientAge')
-              ? parseInt(formData.get('patientAge') as string)
-              : null,
-            patientGender: formData.get('patientGender') as string || null,
-            date: new Date(date),
-            description: formData.get('description') as string || null,
-            isPaid,
-            clinic: { connect: { id: user.clinicId! } },
-            assistant: { connect: { id: user.id } },
-            dentist: { connect: { id: dentistId } },
+            amount: consultationFee,
+            paymentMethod: 'CASH',
+            paymentDate: new Date(),
+            consultation: { connect: { id: consultation.id } },
+            treatment: { connect: { id: treatment.id } },
             createdBy: { connect: { id: user.id } },
+            clinic: { connect: { id: user.clinicId! } },
           },
         });
-  
-        // Création automatique d'un traitement de consultation
-        const treatment = await prisma.treatment.create({
-          data: {
-            type: "Consultation",
-            amount: consultationFee, // Utiliser le montant saisi
-            paidAmount: isPaid ? consultationFee : 0,
-            remainingAmount: isPaid ? 0 : consultationFee,
-            status: isPaid ? "PAID" : "UNPAID",
-            consultation: { connect: { id: consultation.id } },
-            clinic: { connect: { id: user.clinicId! } }
-          }
-        });
-  
-        if (isPaid) {
-          await prisma.payment.create({
-            data: {
-              amount: consultationFee,
-              paymentMethod: 'CASH',
-              paymentDate: new Date(),
-              consultation: { connect: { id: consultation.id } },
-              treatment: { connect: { id: treatment.id } },
-              createdBy: { connect: { id: user.id } },
-              clinic: { connect: { id: user.clinicId! } },
-            },
-          });
-        }
-  
-        return consultation;
-      });
-  
-      revalidatePath('/consultations');
-      return { success: true, id: consultation.id };
-      
-    } catch (error) {
-      console.error('Erreur:', error);
-      return {
-        error: error instanceof Error ? error.message : 'Une erreur inconnue est survenue',
-      };
-    }
+      }
+
+      return consultation;
+    });
+
+    revalidatePath('/consultations');
+    return { success: true, id: consultation.id };
+    
+  } catch (error) {
+    console.error('Erreur:', error);
+    return {
+      error: error instanceof Error ? error.message : 'Une erreur inconnue est survenue',
+    };
   }
+}
   
   // Fonction pour obtenir les consultations selon le rôle
   export async function fetchConsultations(): Promise<Consultation[]> {

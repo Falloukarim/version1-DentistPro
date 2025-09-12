@@ -1,5 +1,5 @@
 'use client';
-import { FiArrowLeft, FiSave, FiPrinter, FiX } from 'react-icons/fi';
+import { FiArrowLeft, FiSave, FiPrinter, FiX, FiBluetooth } from 'react-icons/fi';
 import Link from 'next/link';
 import { addTreatment, getConsultationById } from '../../../action';
 import { Button } from '@/components/ui/button';
@@ -7,7 +7,15 @@ import { use, useActionState } from 'react';
 import { useFormStatus } from 'react-dom';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import clsx from 'clsx';
+import { 
+  connectToPrinter, 
+  printTreatmentTicket, 
+  disconnectPrinter, 
+  isPrinterConnected, 
+  getPrinterStatus,
+  PrinterStatus,
+  isBluetoothAvailable
+} from '@/lib/bluetoothPrinter';
 
 function SubmitButton() {
   const { pending } = useFormStatus();
@@ -33,13 +41,32 @@ function SubmitButton() {
   );
 }
 
+// Définir le type pour l'état qui correspond à ce que retourne addTreatment
+interface TreatmentState {
+  error?: string;
+  success?: boolean;
+  id?: string;
+}
+
 export default function AddTreatment({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const [consultation, setConsultation] = useState<any>(null);
-  const [state, formAction] = useActionState(addTreatment, null);
-  const [printUrl, setPrintUrl] = useState<string | null>(null);
+  const [state, formAction] = useActionState<TreatmentState, FormData>(addTreatment, {});
   const [isClient, setIsClient] = useState(false);
   const router = useRouter();
+  const [printerStatus, setPrinterStatus] = useState<PrinterStatus>({ 
+    isConnected: false, 
+    printerName: null,
+    device: null,
+    bluetoothAvailable: false
+  });
+  const [isConnecting, setIsConnecting] = useState(false);
+  const [formValues, setFormValues] = useState({
+    type: '',
+    amount: 0,
+    paidAmount: 0,
+    status: 'UNPAID' as 'UNPAID' | 'PAID' | 'PARTIAL'
+  });
 
   useEffect(() => {
     setIsClient(true);
@@ -52,14 +79,91 @@ export default function AddTreatment({ params }: { params: Promise<{ id: string 
       }
     };
     fetchConsultation();
+    
+    updatePrinterStatus();
   }, [id]);
 
-  useEffect(() => {
-    if (state?.success && state.id && isClient) {
-      const currentUrl = `${window.location.protocol}//${window.location.host}/print/treatment/${state.id}`;
-      setPrintUrl(`rawbt:${currentUrl}`);
+  const updatePrinterStatus = () => {
+    setPrinterStatus(getPrinterStatus());
+  };
+
+  const handleConnectPrinter = async () => {
+    if (!isBluetoothAvailable()) {
+      alert('API Bluetooth non disponible. Utilisez Chrome ou Edge sur Android/Windows.');
+      return;
     }
-  }, [state, isClient]);
+
+    setIsConnecting(true);
+    try {
+      await connectToPrinter();
+      updatePrinterStatus();
+    } catch (error) {
+      console.error('Failed to connect to printer:', error);
+      alert(`Erreur de connexion: ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
+    } finally {
+      setIsConnecting(false);
+    }
+  };
+
+  const handleDisconnectPrinter = () => {
+    disconnectPrinter();
+    updatePrinterStatus();
+  };
+
+  const handlePrintTicket = async () => {
+    if (!consultation || !consultation.clinic) {
+      alert('Données de consultation incomplètes');
+      return;
+    }
+    
+    try {
+      const remainingAmount = formValues.amount - formValues.paidAmount;
+      
+      await printTreatmentTicket(
+        {
+          name: consultation.clinic.name || 'Clinique Dentaire',
+          address: consultation.clinic.address || '',
+          phone: consultation.clinic.phone || ''
+        },
+        {
+          patientName: consultation.patientName,
+          patientPhone: consultation.patientPhone,
+          date: new Date().toLocaleString('fr-FR'),
+          treatmentType: formValues.type,
+          amount: formValues.amount,
+          paidAmount: formValues.paidAmount,
+          remainingAmount: remainingAmount,
+          status: formValues.status
+        }
+      );
+      
+      alert('Ticket imprimé avec succès!');
+    } catch (error) {
+      console.error('Print error:', error);
+      alert(`Erreur d'impression: ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
+    }
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFormValues(prev => ({
+      ...prev,
+      [name]: name === 'amount' || name === 'paidAmount' ? Number(value) : value
+    }));
+  };
+
+  // Cette fonction est maintenant compatible avec useActionState
+  const handleFormSubmit = (formData: FormData) => {
+    const type = formData.get('type') as string;
+    const amount = Number(formData.get('amount'));
+    const paidAmount = Number(formData.get('paidAmount') || 0);
+    const status = formData.get('status') as 'UNPAID' | 'PAID' | 'PARTIAL';
+    
+    setFormValues({ type, amount, paidAmount, status });
+    formData.append('consultationId', consultation.id);
+    
+    return formAction(formData);
+  };
 
   if (!consultation) {
     return (
@@ -70,11 +174,6 @@ export default function AddTreatment({ params }: { params: Promise<{ id: string 
       </div>
     );
   }
-
-  const handleSubmit = async (formData: FormData) => {
-    formData.append('consultationId', consultation.id);
-    return await formAction(formData);
-  };
 
   return (
     <div className="p-6 max-w-2xl mx-auto bg-white rounded-xl shadow-md border space-y-6">
@@ -87,6 +186,40 @@ export default function AddTreatment({ params }: { params: Promise<{ id: string 
         <h2 className="text-3xl font-semibold text-gray-800">Ajouter un Traitement</h2>
       </div>
 
+      {/* Status Bluetooth */}
+      <div className={`p-4 rounded-lg flex items-center justify-between ${
+        !printerStatus.bluetoothAvailable ? 'bg-destructive/10 text-destructive' :
+        printerStatus.isConnected ? 'bg-success/10 text-success' : 'bg-muted'
+      }`}>
+        <div className="flex items-center">
+          <FiBluetooth className="mr-2" />
+          <span>
+            {!printerStatus.bluetoothAvailable 
+              ? 'Bluetooth non disponible (Chrome/Edge requis)'
+              : printerStatus.isConnected 
+                ? `Imprimante: ${printerStatus.printerName || 'Connectée'}`
+                : 'Imprimante non connectée'}
+          </span>
+        </div>
+        
+        {printerStatus.bluetoothAvailable && (
+          printerStatus.isConnected ? (
+            <Button variant="outline" size="sm" onClick={handleDisconnectPrinter}>
+              Déconnecter
+            </Button>
+          ) : (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handleConnectPrinter}
+              disabled={isConnecting}
+            >
+              {isConnecting ? 'Connexion...' : 'Connecter imprimante'}
+            </Button>
+          )
+        )}
+      </div>
+
       <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
         <p className="font-semibold text-blue-900">
           👤 Patient : {consultation.patientName}
@@ -94,9 +227,14 @@ export default function AddTreatment({ params }: { params: Promise<{ id: string 
         <p className="text-sm text-blue-800">
           🗓️ Consultation du : {new Date(consultation.date).toLocaleDateString()}
         </p>
+        {consultation.clinic && (
+          <p className="text-sm text-blue-800">
+            🏥 Clinique : {consultation.clinic.name}
+          </p>
+        )}
       </div>
 
-      <form action={handleSubmit} className="space-y-5">
+      <form action={handleFormSubmit} className="space-y-5">
         <input type="hidden" name="consultationId" value={consultation.id} />
 
         <div>
@@ -110,6 +248,7 @@ export default function AddTreatment({ params }: { params: Promise<{ id: string 
             minLength={3}
             className="w-full px-4 py-2 border rounded-md bg-gray-50 focus:ring-2 focus:ring-primary focus:outline-none"
             placeholder="Ex: Détartrage, Extraction..."
+            onChange={handleInputChange}
           />
         </div>
 
@@ -126,6 +265,7 @@ export default function AddTreatment({ params }: { params: Promise<{ id: string 
               step="500"
               className="w-full px-4 py-2 border rounded-md bg-gray-50 focus:ring-2 focus:ring-primary focus:outline-none"
               placeholder="10000"
+              onChange={handleInputChange}
             />
           </div>
 
@@ -140,6 +280,7 @@ export default function AddTreatment({ params }: { params: Promise<{ id: string 
               step="500"
               className="w-full px-4 py-2 border rounded-md bg-gray-50 focus:ring-2 focus:ring-primary focus:outline-none"
               placeholder="5000"
+              onChange={handleInputChange}
             />
           </div>
         </div>
@@ -152,6 +293,7 @@ export default function AddTreatment({ params }: { params: Promise<{ id: string 
             name="status"
             required
             className="w-full px-4 py-2 border rounded-md bg-gray-50 focus:ring-2 focus:ring-primary focus:outline-none"
+            onChange={handleInputChange}
           >
             <option value="UNPAID">Non payé</option>
             <option value="PAID">Payé</option>
@@ -184,14 +326,14 @@ export default function AddTreatment({ params }: { params: Promise<{ id: string 
               </Link>
             </Button>
 
-            {printUrl && (
-              <Button asChild>
-                <a href={printUrl} target="_blank" rel="noopener noreferrer">
-                  <FiPrinter className="mr-2" />
-                  Imprimer le ticket
-                </a>
-              </Button>
-            )}
+            <Button 
+              onClick={handlePrintTicket}
+              disabled={!printerStatus.isConnected}
+              className="flex items-center gap-2"
+            >
+              <FiPrinter className="mr-2" />
+              Imprimer le ticket
+            </Button>
 
             <Button asChild variant="secondary">
               <Link href={`/print/treatment/${state.id}`} target="_blank">
@@ -200,6 +342,12 @@ export default function AddTreatment({ params }: { params: Promise<{ id: string 
               </Link>
             </Button>
           </div>
+          
+          {!printerStatus.isConnected && (
+            <p className="mt-3 text-sm text-muted-foreground">
+              Connectez une imprimante Bluetooth pour imprimer le ticket
+            </p>
+          )}
         </div>
       )}
 
