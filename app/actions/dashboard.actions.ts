@@ -88,37 +88,42 @@ export async function getLowStockProducts(threshold = 3) {
 
 
 export async function getUnpaidTreatments() {
+  try {
     const { userId } = await auth();
-    if (!userId) throw new Error("Non autorisé");
-  
+    if (!userId) {
+      console.error('User not authenticated');
+      return [];
+    }
+
     const user = await prisma.user.findUnique({
       where: { clerkUserId: userId },
       include: { clinic: true }
     });
-  
-    if (!user) throw new Error("Utilisateur non trouvé");
 
-    // Filtre par clinique si l'utilisateur n'est pas SUPER_ADMIN
-    const clinicFilter = user.role !== 'SUPER_ADMIN' && user.clinicId
-      ? { clinicId: user.clinicId }
-      : {};
+    if (!user) {
+      console.error('User not found in database');
+      return [];
+    }
 
-    // Filtre selon le rôle
-    const roleFilter = user.role === 'SUPER_ADMIN' 
-      ? {}
-      : {
-          OR: [
-            { assistantId: user.id },
-            { dentistId: user.id }
-          ]
-        };
+    // Construction du filtre pour la consultation
+    const consultationFilter: any = {
+      // Filtre par clinique si l'utilisateur n'est pas SUPER_ADMIN
+      ...(user.role !== 'SUPER_ADMIN' && user.clinicId ? { clinicId: user.clinicId } : {}),
+    };
 
-    return prisma.treatment.findMany({
+    // Filtre selon le rôle - CORRECTION IMPORTANTE
+    if (user.role !== 'SUPER_ADMIN') {
+      consultationFilter.OR = [
+        { assistantId: user.id },
+        { dentistId: user.id }
+      ];
+    }
+
+    console.log('Consultation filter:', JSON.stringify(consultationFilter, null, 2));
+
+    const treatments = await prisma.treatment.findMany({
       where: {
-        consultation: {
-          ...clinicFilter,
-          ...roleFilter
-        },
+        consultation: consultationFilter,
         status: { in: ['UNPAID', 'PARTIAL'] }
       },
       include: {
@@ -127,7 +132,14 @@ export async function getUnpaidTreatments() {
             patientName: true,
             patientPhone: true,
             date: true,
-            clinic: user.role === 'SUPER_ADMIN' ? { select: { name: true } } : undefined
+            // Inclure la clinique seulement pour SUPER_ADMIN
+            ...(user.role === 'SUPER_ADMIN' ? {
+              clinic: {
+                select: {
+                  name: true
+                }
+              }
+            } : {})
           }
         }
       },
@@ -137,6 +149,13 @@ export async function getUnpaidTreatments() {
         }
       }
     });
+
+    console.log(`Found ${treatments.length} unpaid treatments`);
+    return treatments;
+  } catch (error) {
+    console.error('Error in getUnpaidTreatments:', error);
+    return [];
+  }
 }
 
 interface DashboardStats {
